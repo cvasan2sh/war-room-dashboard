@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { DashboardState, FeedCard, MarketData, BayesianTrailItem } from '@/lib/types';
+import { DashboardState, FeedCard, MarketData, NiftyScenario, BayesianTrailItem } from '@/lib/types';
 import { createInitialState, weightedNifty, WAR_START_DATE } from '@/lib/initial-data';
 import { manualProbUpdate } from '@/lib/bayesian';
 
@@ -29,28 +29,24 @@ function countdown(lastRefresh: string | null): string {
   return `${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`;
 }
 
-// --- Color palette (WCAG AA contrast on #080c14) ---
-const C = {
-  primary: '#e6edf3',     // white-ish — main text (13:1)
-  secondary: '#b0b8c4',   // light gray — body text (8:1)
-  tertiary: '#8b949e',    // mid gray — labels, meta (5.5:1)
-  muted: '#6e7681',       // dim gray — timestamps, hints (4:1)
-  faint: '#484f58',       // subtle — dividers in text (2.5:1 — decorative only)
-  green: '#4ade80',
-  red: '#ef4444',
-  yellow: '#eab308',
-  purple: '#a78bfa',
-  cyan: '#06b6d4',
-  orange: '#f97316',
-};
+function pct(v: number): string { return (v > 0 ? '+' : '') + v.toFixed(1) + '%'; }
 
-function dc(val: number): string {
-  return val > 0 ? C.green : val < 0 ? C.red : C.tertiary;
+// Scenario probability → color
+function probColor(p: number): string {
+  if (p > 30) return '#22c55e';
+  if (p > 15) return '#eab308';
+  if (p > 7) return '#f97316';
+  return '#ef4444';
 }
 
-function fcBorder(type: string): string {
-  const m: Record<string, string> = { EVIDENCE: C.green, MARKET: C.cyan, ANALYSIS: C.purple, ACTOR_UPDATE: C.yellow, SYSTEM: C.muted };
-  return m[type] || C.muted;
+// Simple position P&L estimator (delta-based, not Black-Scholes for MVP)
+function estimatePnl(strike: number, type: 'CE' | 'PE', lots: number, premium: number, niftyTarget: number): number {
+  const lotSize = 25; // Nifty lot size
+  let intrinsic = 0;
+  if (type === 'CE') intrinsic = Math.max(0, niftyTarget - strike);
+  else intrinsic = Math.max(0, strike - niftyTarget);
+  const pnlPerLot = (intrinsic - premium) * lotSize;
+  return pnlPerLot * lots;
 }
 
 export default function WarRoomDashboard() {
@@ -61,10 +57,14 @@ export default function WarRoomDashboard() {
   const [expandedMath, setExpandedMath] = useState<Set<string>>(new Set());
   const [editingScenario, setEditingScenario] = useState<number | null>(null);
   const [editInput, setEditInput] = useState('');
+  const [expandedScenario, setExpandedScenario] = useState<number | null>(null);
+  const [showPlayers, setShowPlayers] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const [expandedAnalogue, setExpandedAnalogue] = useState<number | null>(null);
-  const [mobilePanel, setMobilePanel] = useState<'feed' | 'scenarios' | 'actors'>('feed');
-  const feedRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<'updates' | 'scenarios' | 'simulator'>('scenarios');
+
+  // Position simulator state
+  const [positions, setPositions] = useState<Array<{ strike: number; type: 'CE' | 'PE'; lots: number; premium: number }>>([]);
+  const [newPos, setNewPos] = useState({ strike: '', type: 'PE' as 'CE' | 'PE', lots: '1', premium: '' });
 
   useEffect(() => {
     try {
@@ -148,12 +148,19 @@ export default function WarRoomDashboard() {
     setExpandedMath(next);
   };
 
+  const addPosition = () => {
+    const strike = parseInt(newPos.strike);
+    const premium = parseFloat(newPos.premium);
+    const lots = parseInt(newPos.lots) || 1;
+    if (!strike || !premium) return;
+    setPositions([...positions, { strike, type: newPos.type, lots, premium }]);
+    setNewPos({ strike: '', type: 'PE', lots: '1', premium: '' });
+  };
+
   if (loading || !state) {
     return (
-      <div style={{ background: '#080c14', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#4ade80', fontSize: 14, letterSpacing: 4, fontFamily: "'IBM Plex Mono', monospace" }}>
-          INITIALIZING WAR ROOM...
-        </div>
+      <div className="wr-loading">
+        <div className="wr-loading-text">LOADING WAR ROOM...</div>
       </div>
     );
   }
@@ -161,361 +168,742 @@ export default function WarRoomDashboard() {
   const pw = weightedNifty(state.scenarios);
   const spot = marketData?.nifty || 0;
   const gap = spot ? pw - spot : 0;
-  const gapPct = spot ? ((gap / spot) * 100).toFixed(1) : '0';
+  const gapPct = spot ? ((gap / spot) * 100) : 0;
   const lastVisitTime = state.lastVisit ? new Date(state.lastVisit) : null;
   const newCards = lastVisitTime ? state.feedCards.filter(c => new Date(c.timestamp) > lastVisitTime) : [];
 
   return (
-    <div style={{ background: '#080c14', minHeight: '100vh', fontFamily: "'IBM Plex Mono', monospace" }}>
+    <div className="wr-app">
 
-      {/* ═══ COMMAND BAR ═══ */}
-      <div style={{
-        borderBottom: '1px solid #1e3a2f', padding: '12px 16px',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        flexWrap: 'wrap', gap: 10, position: 'sticky', top: 0, background: '#080c14', zIndex: 50,
-      }}>
-        <div style={{ minWidth: 200 }}>
-          <div style={{ color: C.green, fontSize: 16, letterSpacing: 3, fontWeight: 700 }}>◆ WAR ROOM</div>
-          <div style={{ color: C.tertiary, fontSize: 11, marginTop: 3 }}>
-            Day {warDay()} · Next: {countdown(state.lastAiRefresh)}
-            {state.lastAiRefresh && ` · Last: ${timeAgo(state.lastAiRefresh)}`}
+      {/* ═══ HERO / MARKET BAR ═══ */}
+      <header className="wr-header">
+        <div className="wr-header-top">
+          <div className="wr-brand">
+            <h1>WAR ROOM</h1>
+            <span className="wr-brand-sub">Iran-US-Israel Conflict · Day {warDay()}</span>
+          </div>
+          <div className="wr-header-actions">
+            <span className="wr-refresh-info">
+              {state.lastAiRefresh ? `Updated ${timeAgo(state.lastAiRefresh)} · Next: ${countdown(state.lastAiRefresh)}` : 'Not yet refreshed'}
+            </span>
+            <button className="wr-btn-refresh" onClick={triggerAiRefresh} disabled={aiLoading}>
+              {aiLoading ? 'Analyzing...' : 'Refresh Intel'}
+            </button>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        {/* Market strip */}
+        <div className="wr-market-strip">
           {[
-            { l: 'NIFTY', v: marketData?.nifty, c: marketData?.niftyChangePct, f: (n: number) => n.toLocaleString() },
-            { l: 'BRENT', v: marketData?.oil, c: marketData?.oilChangePct, f: (n: number) => `$${n}` },
-            { l: 'INR', v: marketData?.inr, c: marketData?.inrChangePct, f: (n: number) => n.toFixed(2) },
-            { l: 'VIX', v: marketData?.vix, c: marketData?.vixChangePct, f: (n: number) => n.toFixed(1) },
+            { label: 'Nifty 50', val: marketData?.nifty, chg: marketData?.niftyChangePct, fmt: (n: number) => n.toLocaleString() },
+            { label: 'Brent Crude', val: marketData?.oil, chg: marketData?.oilChangePct, fmt: (n: number) => `$${n.toFixed(1)}` },
+            { label: 'USD/INR', val: marketData?.inr, chg: marketData?.inrChangePct, fmt: (n: number) => n.toFixed(2) },
+            { label: 'India VIX', val: marketData?.vix, chg: marketData?.vixChangePct, fmt: (n: number) => n.toFixed(1) },
           ].map(t => (
-            <div key={t.l} style={{
-              background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 4,
-              padding: '5px 12px', textAlign: 'center', minWidth: 80,
-            }}>
-              <div style={{ fontSize: 10, color: C.tertiary, letterSpacing: 2 }}>{t.l}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: t.v ? C.primary : C.muted }}>
-                {t.v ? t.f(t.v) : '—'}
-              </div>
-              {t.c != null && t.c !== 0 && (
-                <div style={{ fontSize: 11, color: dc(t.c) }}>
-                  {t.c > 0 ? '↑' : '↓'}{Math.abs(t.c).toFixed(1)}%
-                </div>
+            <div key={t.label} className="wr-market-item">
+              <span className="wr-market-label">{t.label}</span>
+              <span className="wr-market-val">{t.val ? t.fmt(t.val) : '—'}</span>
+              {t.chg != null && t.chg !== 0 && (
+                <span className={`wr-market-chg ${t.chg > 0 ? 'up' : 'down'}`}>{pct(t.chg)}</span>
               )}
             </div>
           ))}
-
-          <div style={{
-            background: '#112a1a', border: `1px solid ${C.green}`, borderRadius: 4,
-            padding: '5px 12px', textAlign: 'center',
-          }}>
-            <div style={{ fontSize: 10, color: C.tertiary, letterSpacing: 2 }}>P-WEIGHT</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>{pw.toLocaleString()}</div>
-            {spot > 0 && <div style={{ fontSize: 11, color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap.toFixed(0)}</div>}
+          <div className="wr-market-item highlight">
+            <span className="wr-market-label" title="Probability-weighted Nifty target across all scenarios">AI Target</span>
+            <span className="wr-market-val accent">{pw.toLocaleString()}</span>
+            {spot > 0 && <span className={`wr-market-chg ${gap >= 0 ? 'up' : 'down'}`}>Gap: {gap > 0 ? '+' : ''}{gap.toFixed(0)} ({gapPct.toFixed(1)}%)</span>}
           </div>
-
-          <button onClick={triggerAiRefresh} disabled={aiLoading} style={{
-            background: aiLoading ? '#0d1117' : '#112a1a',
-            border: `1px solid ${aiLoading ? C.muted : C.purple}`,
-            color: aiLoading ? C.tertiary : C.purple,
-            padding: '8px 16px', borderRadius: 4, cursor: aiLoading ? 'default' : 'pointer',
-            fontSize: 12, letterSpacing: 2, fontFamily: 'inherit', fontWeight: 600,
-          }}>
-            {aiLoading ? '◌ RUNNING...' : '⚡ REFRESH'}
-          </button>
         </div>
-      </div>
+      </header>
 
-      {/* ═══ MOBILE TABS ═══ */}
-      <div className="mobile-tabs" style={{
-        display: 'none', padding: '8px 16px', gap: 6, borderBottom: '1px solid #1e3a2f',
-      }}>
-        {(['feed', 'scenarios', 'actors'] as const).map(p => (
-          <button key={p} onClick={() => setMobilePanel(p)} style={{
-            flex: 1, background: mobilePanel === p ? '#112a1a' : 'transparent',
-            border: `1px solid ${mobilePanel === p ? C.green : '#1e3a2f'}`,
-            color: mobilePanel === p ? C.green : C.tertiary,
-            padding: '8px', borderRadius: 4, fontSize: 12, letterSpacing: 1,
-            textTransform: 'uppercase', fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600,
-          }}>{p}</button>
+      {/* ═══ DELTA CARD ═══ */}
+      {newCards.length > 0 && lastVisitTime && (
+        <div className="wr-delta-card">
+          <strong>Since your last visit</strong> ({timeAgo(lastVisitTime.toISOString())}): {newCards.length} new update{newCards.length !== 1 ? 's' : ''}.
+          AI Target Nifty: {pw.toLocaleString()}.
+          {marketData && ` Oil $${marketData.oil?.toFixed(1)}. VIX ${marketData.vix?.toFixed(1)}.`}
+        </div>
+      )}
+
+      {/* ═══ TAB NAVIGATION ═══ */}
+      <nav className="wr-tabs">
+        {[
+          { id: 'scenarios' as const, label: 'Scenarios & Impact', count: state.scenarios.length },
+          { id: 'updates' as const, label: 'Live Updates', count: state.feedCards.length },
+          { id: 'simulator' as const, label: 'Position Simulator', count: positions.length || undefined },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            className={`wr-tab ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+            {tab.count !== undefined && <span className="wr-tab-badge">{tab.count}</span>}
+          </button>
         ))}
-      </div>
+        <button className={`wr-tab ${showPlayers ? 'active' : ''}`} onClick={() => setShowPlayers(!showPlayers)}>
+          Key Players
+        </button>
+      </nav>
 
-      {/* ═══ THREE-PANEL LAYOUT ═══ */}
-      <div className="main-grid" style={{
-        display: 'grid', gridTemplateColumns: '240px 1fr 320px',
-        height: 'calc(100vh - 70px)', overflow: 'hidden',
-      }}>
+      {/* ═══ MAIN CONTENT ═══ */}
+      <main className="wr-main">
 
-        {/* ─── LEFT: Actors ─── */}
-        <div className="panel-left" style={{
-          borderRight: '1px solid #1e3a2f', overflowY: 'auto', padding: '12px 10px',
-        }}>
-          <div style={{ fontSize: 10, color: C.tertiary, letterSpacing: 2, marginBottom: 10, fontWeight: 600 }}>ACTORS ({state.actors.length})</div>
-          {state.actors.map(a => (
-            <div key={a.id} style={{
-              background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 5,
-              padding: '8px 10px', marginBottom: 6,
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                <span style={{ fontSize: 14 }}>{a.flag}</span>
-                <span style={{ fontSize: 9, color: a.statusColor, border: `1px solid ${a.statusColor}`, padding: '1px 5px', borderRadius: 3, letterSpacing: 1, fontWeight: 600 }}>
-                  {a.status}
-                </span>
+        {/* ─── SCENARIOS TAB ─── */}
+        {activeTab === 'scenarios' && (
+          <div className="wr-scenarios">
+            {/* Visual probability bar */}
+            <div className="wr-prob-overview">
+              <div className="wr-prob-bar-container">
+                {state.scenarios.map((s, i) => (
+                  <div
+                    key={i}
+                    className="wr-prob-segment"
+                    style={{ width: `${s.prob}%`, background: probColor(s.prob) }}
+                    title={`${s.scenario}: ${s.prob}%`}
+                    onClick={() => setExpandedScenario(expandedScenario === i ? null : i)}
+                  />
+                ))}
               </div>
-              <div style={{ fontSize: 12, color: C.primary, fontWeight: 700 }}>{a.name}</div>
-              {a.latestDevelopment ? (
-                <div style={{ fontSize: 10, color: C.yellow, marginTop: 4, lineHeight: 1.5 }}>
-                  {a.latestDevelopment}
-                  <span style={{ color: C.muted }}> — {a.latestDevSource}</span>
-                </div>
-              ) : (
-                <div style={{ fontSize: 10, color: C.tertiary, marginTop: 4, lineHeight: 1.4 }}>{a.objective.slice(0, 60)}...</div>
-              )}
-            </div>
-          ))}
-
-          <button onClick={() => setShowNotes(!showNotes)} style={{
-            width: '100%', marginTop: 10, background: 'transparent',
-            border: '1px solid #1e3a2f', color: C.tertiary, padding: '6px',
-            borderRadius: 4, fontSize: 11, letterSpacing: 2, cursor: 'pointer', fontFamily: 'inherit',
-          }}>
-            {showNotes ? '▼ NOTES' : '▶ NOTES'}
-          </button>
-          {showNotes && (
-            <textarea value={state.userNotes} onChange={e => save({ ...state, userNotes: e.target.value })}
-              placeholder="Paste news, intel..."
-              style={{
-                width: '100%', minHeight: 120, marginTop: 6, background: '#0d1117',
-                border: '1px solid #1e3a2f', borderRadius: 4, padding: 8,
-                color: C.secondary, fontSize: 11, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical',
-              }} />
-          )}
-        </div>
-
-        {/* ─── CENTER: Intelligence Feed ─── */}
-        <div ref={feedRef} className="panel-center" style={{
-          overflowY: 'auto', padding: '12px 18px', borderRight: '1px solid #1e3a2f',
-        }}>
-          {/* Delta card */}
-          {newCards.length > 0 && lastVisitTime && (
-            <div style={{
-              background: '#0d1020', border: `1px solid ${C.purple}`, borderRadius: 6,
-              padding: '10px 14px', marginBottom: 14,
-            }}>
-              <div style={{ fontSize: 10, color: C.purple, letterSpacing: 2, marginBottom: 5, fontWeight: 600 }}>
-                SINCE LAST VISIT ({timeAgo(lastVisitTime.toISOString())})
-              </div>
-              <div style={{ fontSize: 13, color: C.primary, lineHeight: 1.5 }}>
-                {newCards.length} update{newCards.length !== 1 ? 's' : ''}.
-                P-weighted Nifty: {pw.toLocaleString()}.
-                {marketData && ` Oil $${marketData.oil}. VIX ${marketData.vix?.toFixed(1) || '?'}.`}
+              <div className="wr-prob-legend">
+                {state.scenarios.map((s, i) => (
+                  <span key={i} className="wr-legend-item" onClick={() => setExpandedScenario(expandedScenario === i ? null : i)}>
+                    <span className="wr-legend-dot" style={{ background: probColor(s.prob) }} />
+                    {s.scenario} <strong>{s.prob}%</strong>
+                  </span>
+                ))}
               </div>
             </div>
-          )}
 
-          <div style={{ fontSize: 11, color: C.tertiary, letterSpacing: 2, marginBottom: 12, fontWeight: 600 }}>
-            INTELLIGENCE FEED
-            <span style={{ color: C.muted, marginLeft: 8, fontWeight: 400 }}>{state.feedCards.length} entries</span>
-          </div>
-
-          {state.feedCards.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: C.tertiary }}>
-              <div style={{ fontSize: 28, marginBottom: 10 }}>◇</div>
-              <div style={{ fontSize: 14 }}>No intelligence yet.</div>
-              <div style={{ fontSize: 12, marginTop: 4, color: C.secondary }}>Click ⚡ REFRESH to run the first analysis.</div>
-            </div>
-          )}
-
-          {state.feedCards.map(card => (
-            <div key={card.id} style={{
-              background: '#0d1117', borderRadius: 5,
-              borderLeft: `3px solid ${fcBorder(card.type)}`,
-              padding: '10px 14px', marginBottom: 8, animation: 'slide-in 0.3s ease',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 10, color: fcBorder(card.type), letterSpacing: 1, fontWeight: 600 }}>{card.type.replace('_', ' ')}</span>
-                  {card.classification && (
-                    <span style={{
-                      fontSize: 9, letterSpacing: 1, padding: '1px 6px',
-                      border: `1px solid ${card.classification === 'FACT' ? C.green : card.classification === 'REPORTED' ? C.yellow : C.purple}`,
-                      color: card.classification === 'FACT' ? C.green : card.classification === 'REPORTED' ? C.yellow : C.purple,
-                      borderRadius: 3, fontWeight: 600,
-                    }}>{card.classification}</span>
-                  )}
-                </div>
-                <span style={{ fontSize: 10, color: C.muted }}>{timeAgo(card.timestamp)}</span>
-              </div>
-
-              <div style={{ fontSize: 14, color: C.primary, fontWeight: 600, marginBottom: 5, lineHeight: 1.5 }}>{card.title}</div>
-              <div style={{ fontSize: 12, color: C.secondary, lineHeight: 1.6, marginBottom: 6 }}>{card.body}</div>
-
-              {card.source && (
-                <div style={{ fontSize: 10, color: C.muted }}>
-                  Source: {card.source}
-                  {card.sourceUrl && <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: C.green, marginLeft: 4 }}>↗</a>}
-                </div>
-              )}
-
-              {card.scenarioImpact && card.scenarioImpact.posterior > 0 && (
-                <div style={{ marginTop: 8, padding: '8px 10px', background: '#080c14', borderRadius: 4, border: '1px solid #1e3a2f' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: C.secondary }}>{card.scenarioImpact.scenario}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700 }}>
-                      <span style={{ color: C.tertiary }}>{card.scenarioImpact.prior}%</span>
-                      <span style={{ color: C.muted }}> → </span>
-                      <span style={{ color: card.scenarioImpact.posterior > card.scenarioImpact.prior ? C.red : C.green }}>
-                        {card.scenarioImpact.posterior}%
-                      </span>
-                    </span>
-                  </div>
-                  <div style={{ fontSize: 10, color: C.tertiary, marginTop: 2 }}>LR: {card.scenarioImpact.likelihoodRatio}x</div>
-
-                  {card.bayesianTrail && card.bayesianTrail.length > 0 && (
-                    <>
-                      <button onClick={() => toggleMath(card.id)} style={{
-                        background: 'transparent', border: 'none', color: C.purple,
-                        fontSize: 10, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', letterSpacing: 1, fontWeight: 600,
-                      }}>
-                        {expandedMath.has(card.id) ? '▼ HIDE MATH' : '▶ SHOW MATH'}
-                      </button>
-                      {expandedMath.has(card.id) && (
-                        <BayesianMathView trail={card.bayesianTrail} prior={card.scenarioImpact.prior} posterior={card.scenarioImpact.posterior} />
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* ─── RIGHT: Scenario Engine ─── */}
-        <div className="panel-right" style={{ overflowY: 'auto', padding: '12px 10px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: C.tertiary, letterSpacing: 2, fontWeight: 600 }}>SCENARIO ENGINE</div>
-            <div style={{ fontSize: 14, color: C.green, fontWeight: 700 }}>{pw.toLocaleString()}</div>
-          </div>
-
-          {spot > 0 && (
-            <div style={{
-              background: '#112a1a', border: '1px solid #1e3a2f', borderRadius: 4,
-              padding: '7px 10px', marginBottom: 10, textAlign: 'center', fontSize: 11,
-            }}>
-              <span style={{ color: C.tertiary }}>SPOT {spot.toLocaleString()}</span>
-              <span style={{ color: C.faint }}> · </span>
-              <span style={{ color: C.green }}>TARGET {pw.toLocaleString()}</span>
-              <span style={{ color: C.faint }}> · </span>
-              <span style={{ color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap.toFixed(0)} ({gapPct}%)</span>
-            </div>
-          )}
-
-          <div style={{ fontSize: 9, color: C.muted, letterSpacing: 1, marginBottom: 8 }}>CLICK % TO EDIT · AUTO-REDISTRIBUTES TO 100</div>
-
-          {state.scenarios.map((s, i) => {
-            const bc = s.prob > 30 ? C.green : s.prob > 15 ? C.yellow : s.prob > 7 ? C.orange : C.red;
-            return (
-              <div key={i} style={{ background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 5, padding: '9px 11px', marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div style={{ fontSize: 12, color: C.primary, fontWeight: 600, flex: 1 }}>{s.scenario}</div>
-                  {editingScenario === i ? (
-                    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                      <input value={editInput} onChange={e => setEditInput(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleProbEdit(i); if (e.key === 'Escape') setEditingScenario(null); }}
-                        autoFocus style={{ width: 42, background: '#080c14', border: `1px solid ${C.green}`, color: C.green, borderRadius: 3, padding: '2px 4px', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }}
-                      />
-                      <button onClick={() => handleProbEdit(i)} style={{ background: '#112a1a', border: `1px solid ${C.green}`, color: C.green, borderRadius: 3, padding: '2px 7px', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>✓</button>
-                    </div>
-                  ) : (
-                    <span onClick={() => { setEditingScenario(i); setEditInput(String(s.prob)); }}
-                      style={{ fontSize: 16, color: bc, fontWeight: 700, cursor: 'pointer', minWidth: 42, textAlign: 'right' }}>
-                      {s.prob}%
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ background: '#080c14', borderRadius: 3, height: 5, marginBottom: 5 }}>
-                  <div style={{ background: bc, height: 5, borderRadius: 3, width: `${s.prob}%`, transition: 'width 0.3s' }} />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                  <span style={{ color: C.purple }}>Nifty {s.range}</span>
-                  <span style={{ color: C.muted }}>{s.ivEstimate}</span>
-                </div>
-                <div style={{ fontSize: 10, color: C.tertiary, marginTop: 2, lineHeight: 1.4 }}>{s.driver}</div>
-
-                {s.analogues.length > 0 && (
-                  <>
-                    <button onClick={() => setExpandedAnalogue(expandedAnalogue === i ? null : i)}
-                      style={{ background: 'transparent', border: 'none', color: C.cyan, fontSize: 10, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', letterSpacing: 1, fontWeight: 600 }}>
-                      {expandedAnalogue === i ? '▼ PRECEDENT' : '▶ PRECEDENT'}
-                    </button>
-                    {expandedAnalogue === i && s.analogues.map((a, ai) => (
-                      <div key={ai} style={{ background: '#080c14', borderRadius: 4, padding: '7px 9px', border: '1px solid #0e3347', marginTop: 3 }}>
-                        <div style={{ fontSize: 11, color: C.cyan, marginBottom: 3, fontWeight: 600 }}>{a.event} ({a.date})</div>
-                        <div style={{ fontSize: 10, color: C.secondary, lineHeight: 1.6 }}>
-                          Oil: {a.oilMove} · Nifty: {a.niftyMove}<br />
-                          VIX: {a.vixMove} · Recovery: {a.recoveryDays} sessions
-                        </div>
-                        <div style={{ fontSize: 9, color: C.muted, marginTop: 2 }}>Source: {a.source}</div>
+            {/* Scenario cards */}
+            <div className="wr-scenario-grid">
+              {state.scenarios.map((s, i) => {
+                const isExpanded = expandedScenario === i;
+                return (
+                  <div key={i} className={`wr-scenario-card ${isExpanded ? 'expanded' : ''}`}>
+                    <div className="wr-scenario-header" onClick={() => setExpandedScenario(isExpanded ? null : i)}>
+                      <div className="wr-scenario-info">
+                        <div className="wr-scenario-name">{s.scenario}</div>
+                        <div className="wr-scenario-range">Nifty {s.range} · {s.ivEstimate}</div>
                       </div>
-                    ))}
-                  </>
+                      <div className="wr-scenario-prob-area">
+                        {editingScenario === i ? (
+                          <div className="wr-prob-edit" onClick={e => e.stopPropagation()}>
+                            <input
+                              value={editInput}
+                              onChange={e => setEditInput(e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') handleProbEdit(i); if (e.key === 'Escape') setEditingScenario(null); }}
+                              autoFocus
+                              className="wr-prob-input"
+                            />
+                            <button onClick={() => handleProbEdit(i)} className="wr-prob-confirm">Set</button>
+                          </div>
+                        ) : (
+                          <span
+                            className="wr-scenario-prob"
+                            style={{ color: probColor(s.prob) }}
+                            onClick={e => { e.stopPropagation(); setEditingScenario(i); setEditInput(String(s.prob)); }}
+                            title="Click to edit probability"
+                          >
+                            {s.prob}%
+                          </span>
+                        )}
+                        <div className="wr-mini-bar">
+                          <div style={{ width: `${s.prob}%`, background: probColor(s.prob) }} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="wr-scenario-detail">
+                        <div className="wr-scenario-driver"><strong>Driver:</strong> {s.driver}</div>
+
+                        {/* Historical precedent — always visible when expanded */}
+                        {s.analogues.map((a, ai) => (
+                          <div key={ai} className="wr-precedent">
+                            <div className="wr-precedent-title">Historical Precedent: {a.event} ({a.date})</div>
+                            <div className="wr-precedent-grid">
+                              <div><span className="wr-precedent-label">Oil</span> {a.oilMove}</div>
+                              <div><span className="wr-precedent-label">Nifty</span> {a.niftyMove}</div>
+                              <div><span className="wr-precedent-label">VIX</span> {a.vixMove}</div>
+                              <div><span className="wr-precedent-label">Recovery</span> {a.recoveryDays} sessions</div>
+                            </div>
+                            <div className="wr-precedent-source">Source: {a.source}</div>
+                          </div>
+                        ))}
+
+                        {/* P&L preview if positions exist */}
+                        {positions.length > 0 && (
+                          <div className="wr-scenario-pnl">
+                            <div className="wr-pnl-title">Your position P&L at Nifty {s.rangeMid.toLocaleString()}:</div>
+                            {positions.map((p, pi) => {
+                              const pnl = estimatePnl(p.strike, p.type, p.lots, p.premium, s.rangeMid);
+                              return (
+                                <span key={pi} className={`wr-pnl-value ${pnl >= 0 ? 'profit' : 'loss'}`}>
+                                  {p.lots}x {p.strike}{p.type}: {pnl >= 0 ? '+' : ''}{(pnl / 1000).toFixed(1)}K
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="wr-hint">Click any scenario to see details. Click the % to edit probabilities — they auto-redistribute to 100%.</p>
+          </div>
+        )}
+
+        {/* ─── LIVE UPDATES TAB ─── */}
+        {activeTab === 'updates' && (
+          <div className="wr-updates">
+            {state.feedCards.length === 0 ? (
+              <div className="wr-empty">
+                <div className="wr-empty-icon">📡</div>
+                <h3>No intelligence yet</h3>
+                <p>Click <strong>Refresh Intel</strong> above to run the first AI analysis. The system will scan recent news, classify evidence, and update scenario probabilities.</p>
+              </div>
+            ) : (
+              state.feedCards.map(card => (
+                <div key={card.id} className="wr-update-card" style={{ borderLeftColor: card.type === 'EVIDENCE' ? '#22c55e' : card.type === 'ANALYSIS' ? '#a78bfa' : card.type === 'ACTOR_UPDATE' ? '#eab308' : '#8b949e' }}>
+                  <div className="wr-update-meta">
+                    <span className="wr-update-type">{card.type === 'EVIDENCE' ? 'Intel' : card.type === 'ACTOR_UPDATE' ? 'Player Update' : card.type === 'ANALYSIS' ? 'Analysis' : 'System'}</span>
+                    {card.classification && (
+                      <span className={`wr-update-badge ${card.classification.toLowerCase()}`}>{card.classification}</span>
+                    )}
+                    <span className="wr-update-time">{timeAgo(card.timestamp)}</span>
+                  </div>
+                  <h4 className="wr-update-title">{card.title}</h4>
+                  <p className="wr-update-body">{card.body}</p>
+
+                  {card.source && (
+                    <div className="wr-update-source">
+                      Source: {card.source}
+                      {card.sourceUrl && <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer"> ↗</a>}
+                    </div>
+                  )}
+
+                  {card.scenarioImpact && card.scenarioImpact.posterior > 0 && (
+                    <div className="wr-update-impact">
+                      <span>{card.scenarioImpact.scenario}:</span>
+                      <span className="wr-impact-shift">
+                        {card.scenarioImpact.prior}% → <strong style={{ color: card.scenarioImpact.posterior > card.scenarioImpact.prior ? '#ef4444' : '#22c55e' }}>{card.scenarioImpact.posterior}%</strong>
+                      </span>
+                      <span className="wr-impact-lr">(LR: {card.scenarioImpact.likelihoodRatio}x)</span>
+
+                      {card.bayesianTrail && card.bayesianTrail.length > 0 && (
+                        <>
+                          <button className="wr-math-toggle" onClick={() => toggleMath(card.id)}>
+                            {expandedMath.has(card.id) ? 'Hide math' : 'Show probability math'}
+                          </button>
+                          {expandedMath.has(card.id) && <BayesianMathView trail={card.bayesianTrail} prior={card.scenarioImpact.prior} posterior={card.scenarioImpact.posterior} />}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* ─── POSITION SIMULATOR TAB ─── */}
+        {activeTab === 'simulator' && (
+          <div className="wr-simulator">
+            <div className="wr-sim-intro">
+              <h3>Position Simulator</h3>
+              <p>Enter your Nifty options positions to see estimated P&L under each war scenario. Uses intrinsic value calculation against scenario midpoints.</p>
+            </div>
+
+            <div className="wr-sim-form">
+              <input
+                type="number"
+                placeholder="Strike (e.g. 23000)"
+                value={newPos.strike}
+                onChange={e => setNewPos({ ...newPos, strike: e.target.value })}
+                className="wr-sim-input"
+              />
+              <select value={newPos.type} onChange={e => setNewPos({ ...newPos, type: e.target.value as 'CE' | 'PE' })} className="wr-sim-select">
+                <option value="PE">PUT (PE)</option>
+                <option value="CE">CALL (CE)</option>
+              </select>
+              <input
+                type="number"
+                placeholder="Lots"
+                value={newPos.lots}
+                onChange={e => setNewPos({ ...newPos, lots: e.target.value })}
+                className="wr-sim-input small"
+              />
+              <input
+                type="number"
+                placeholder="Premium paid"
+                value={newPos.premium}
+                onChange={e => setNewPos({ ...newPos, premium: e.target.value })}
+                className="wr-sim-input"
+              />
+              <button onClick={addPosition} className="wr-btn-add">Add Position</button>
+            </div>
+
+            {positions.length > 0 && (
+              <>
+                <div className="wr-sim-positions">
+                  {positions.map((p, i) => (
+                    <span key={i} className="wr-pos-tag">
+                      {p.lots}x {p.strike} {p.type} @ {p.premium}
+                      <button onClick={() => setPositions(positions.filter((_, j) => j !== i))} className="wr-pos-remove">×</button>
+                    </span>
+                  ))}
+                  <button onClick={() => setPositions([])} className="wr-btn-clear">Clear all</button>
+                </div>
+
+                <div className="wr-sim-results">
+                  <table className="wr-sim-table">
+                    <thead>
+                      <tr>
+                        <th>Scenario</th>
+                        <th>Probability</th>
+                        <th>Nifty Target</th>
+                        {positions.map((p, i) => <th key={i}>{p.lots}x {p.strike}{p.type}</th>)}
+                        <th>Total P&L</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {state.scenarios.map((s, si) => {
+                        const pnls = positions.map(p => estimatePnl(p.strike, p.type, p.lots, p.premium, s.rangeMid));
+                        const total = pnls.reduce((a, b) => a + b, 0);
+                        return (
+                          <tr key={si}>
+                            <td className="wr-sim-scenario">{s.scenario}</td>
+                            <td style={{ color: probColor(s.prob) }}>{s.prob}%</td>
+                            <td>{s.rangeMid.toLocaleString()}</td>
+                            {pnls.map((pnl, pi) => (
+                              <td key={pi} className={pnl >= 0 ? 'profit' : 'loss'}>
+                                {pnl >= 0 ? '+' : ''}{(pnl / 1000).toFixed(1)}K
+                              </td>
+                            ))}
+                            <td className={`wr-sim-total ${total >= 0 ? 'profit' : 'loss'}`}>
+                              {total >= 0 ? '+' : ''}{(total / 1000).toFixed(1)}K
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="wr-sim-expected">
+                        <td><strong>Expected (probability-weighted)</strong></td>
+                        <td>100%</td>
+                        <td>{pw.toLocaleString()}</td>
+                        {positions.map((p, pi) => {
+                          const expected = state.scenarios.reduce((sum, s) => sum + estimatePnl(p.strike, p.type, p.lots, p.premium, s.rangeMid) * s.prob / 100, 0);
+                          return <td key={pi} className={expected >= 0 ? 'profit' : 'loss'}>{expected >= 0 ? '+' : ''}{(expected / 1000).toFixed(1)}K</td>;
+                        })}
+                        <td className={`wr-sim-total ${state.scenarios.reduce((sum, s) => sum + positions.reduce((ps, p) => ps + estimatePnl(p.strike, p.type, p.lots, p.premium, s.rangeMid), 0) * s.prob / 100, 0) >= 0 ? 'profit' : 'loss'}`}>
+                          <strong>
+                            {(() => {
+                              const ev = state.scenarios.reduce((sum, s) => sum + positions.reduce((ps, p) => ps + estimatePnl(p.strike, p.type, p.lots, p.premium, s.rangeMid), 0) * s.prob / 100, 0);
+                              return `${ev >= 0 ? '+' : ''}${(ev / 1000).toFixed(1)}K`;
+                            })()}
+                          </strong>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            {positions.length === 0 && (
+              <div className="wr-sim-empty">
+                <p>Add your Nifty options positions above to see how each war scenario affects your P&L.</p>
+                <p className="wr-hint">Example: If you hold 2 lots of 23000 PE bought at premium 200, enter Strike: 23000, PUT, Lots: 2, Premium: 200</p>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* ═══ KEY PLAYERS DRAWER ═══ */}
+      {showPlayers && (
+        <div className="wr-players-drawer">
+          <div className="wr-players-header">
+            <h3>Key Players</h3>
+            <button onClick={() => setShowPlayers(false)} className="wr-drawer-close">×</button>
+          </div>
+          <div className="wr-players-grid">
+            {state.actors.map(a => (
+              <div key={a.id} className="wr-player-card">
+                <div className="wr-player-top">
+                  <span className="wr-player-flag">{a.flag}</span>
+                  <span className="wr-player-name">{a.name}</span>
+                  <span className="wr-player-status" style={{ color: a.statusColor, borderColor: a.statusColor }}>
+                    {a.status}
+                  </span>
+                </div>
+                {a.latestDevelopment ? (
+                  <div className="wr-player-latest">{a.latestDevelopment} <span className="wr-player-source">— {a.latestDevSource}</span></div>
+                ) : (
+                  <div className="wr-player-objective">{a.objective}</div>
                 )}
               </div>
-            );
-          })}
-
-          <div style={{ marginTop: 14, padding: '8px 10px', background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 4 }}>
-            <div style={{ fontSize: 9, color: C.muted, lineHeight: 1.6 }}>
-              Factual intelligence only. Not investment advice. Probabilities are Bayesian
-              estimates with auditable math. Sources linked. Not SEBI registered.
-            </div>
+            ))}
           </div>
+          <button onClick={() => setShowNotes(!showNotes)} className="wr-notes-toggle">
+            {showNotes ? '▼ My Notes' : '▶ My Notes'}
+          </button>
+          {showNotes && (
+            <textarea
+              value={state.userNotes}
+              onChange={e => save({ ...state, userNotes: e.target.value })}
+              placeholder="Paste news links, your analysis, anything..."
+              className="wr-notes-area"
+            />
+          )}
         </div>
-      </div>
+      )}
 
-      {/* Responsive styles */}
-      <style>{`
-        @media (max-width: 1100px) {
-          .main-grid { grid-template-columns: 200px 1fr 280px !important; }
-        }
-        @media (max-width: 900px) {
-          .main-grid { grid-template-columns: 1fr !important; height: auto !important; }
-          .panel-left { display: ${mobilePanel === 'actors' ? 'block' : 'none'} !important; border-right: none !important; }
-          .panel-center { display: ${mobilePanel === 'feed' ? 'block' : 'none'} !important; border-right: none !important; min-height: calc(100vh - 130px); }
-          .panel-right { display: ${mobilePanel === 'scenarios' ? 'block' : 'none'} !important; }
-          .mobile-tabs { display: flex !important; }
-        }
-        @media (max-width: 600px) {
-          .main-grid { padding: 0 !important; }
-          .panel-center, .panel-left, .panel-right { padding: 10px 12px !important; }
-        }
-      `}</style>
+      {/* ═══ FOOTER DISCLAIMER ═══ */}
+      <footer className="wr-footer">
+        Factual intelligence only. Not investment advice. Probabilities are Bayesian estimates with auditable math. Sources linked. Not SEBI registered.
+      </footer>
+
+      <style>{styles}</style>
     </div>
   );
 }
 
 function BayesianMathView({ trail, prior, posterior }: { trail: BayesianTrailItem[]; prior: number; posterior: number }) {
-  const priorOdds = prior / (100 - prior);
+  const priorOdds = prior / (100 - prior || 1);
   return (
-    <div style={{ marginTop: 6, padding: '8px', background: '#060a12', borderRadius: 4, border: '1px solid #1a1a2e' }}>
-      <div style={{ fontSize: 10, color: '#a78bfa', letterSpacing: 1, marginBottom: 5, fontWeight: 600 }}>BAYESIAN AUDIT TRAIL</div>
-      <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 6 }}>Prior: {prior}% → Odds: {priorOdds.toFixed(4)}</div>
+    <div className="wr-math-detail">
+      <div className="wr-math-title">Probability Math (Bayesian Update)</div>
+      <div className="wr-math-line">Starting probability: {prior}% (odds: {priorOdds.toFixed(2)})</div>
       {trail.map((t, i) => (
-        <div key={i} style={{ padding: '4px 0', borderBottom: i < trail.length - 1 ? '1px solid #1a1a2e' : 'none' }}>
-          <div style={{ fontSize: 10, color: '#b0b8c4', lineHeight: 1.5 }}>
-            <span style={{ color: t.direction === '+' ? '#ef4444' : '#4ade80', fontWeight: 700 }}>[{t.direction}]</span> {t.evidence}
+        <div key={i} className="wr-math-step">
+          <div className="wr-math-evidence">
+            <span style={{ color: t.direction === '+' ? '#ef4444' : '#22c55e', fontWeight: 700 }}>[{t.direction}]</span> {t.evidence}
           </div>
-          <div style={{ fontSize: 9, color: '#8b949e', marginTop: 2 }}>{t.classification} · {t.source} · LR: {t.likelihoodRatio}x</div>
-          <div style={{ fontSize: 9, color: '#8b949e', lineHeight: 1.4 }}>{t.reasoning}</div>
-          <div style={{ fontSize: 9, color: '#6e7681' }}>Odds: {t.priorOdds} → {t.posteriorOdds}</div>
+          <div className="wr-math-meta">{t.classification} · {t.source} · Likelihood Ratio: {t.likelihoodRatio}x</div>
+          <div className="wr-math-reasoning">{t.reasoning}</div>
+          <div className="wr-math-odds">Odds: {t.priorOdds} → {t.posteriorOdds}</div>
         </div>
       ))}
-      <div style={{ fontSize: 11, color: '#a78bfa', marginTop: 6, fontWeight: 700 }}>
-        Final posterior: {posterior}%
-      </div>
+      <div className="wr-math-result">Final probability: {posterior}%</div>
     </div>
   );
 }
+
+// ═══ STYLES ═══
+const styles = `
+  /* Reset & Base */
+  .wr-app {
+    min-height: 100vh;
+    background: #0a0e17;
+    color: #c8cdd5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+  }
+
+  /* Loading */
+  .wr-loading { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #0a0e17; }
+  .wr-loading-text { color: #22c55e; font-size: 16px; letter-spacing: 3px; font-family: 'IBM Plex Mono', monospace; }
+
+  /* Header */
+  .wr-header {
+    padding: 20px 0 12px;
+    border-bottom: 1px solid #1c2333;
+    position: sticky;
+    top: 0;
+    background: #0a0e17;
+    z-index: 50;
+  }
+  .wr-header-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+  .wr-brand h1 { margin: 0; font-size: 22px; color: #22c55e; font-family: 'IBM Plex Mono', monospace; font-weight: 700; letter-spacing: 3px; }
+  .wr-brand-sub { font-size: 13px; color: #8b949e; }
+  .wr-header-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .wr-refresh-info { font-size: 12px; color: #8b949e; }
+  .wr-btn-refresh {
+    background: #1a3a28; border: 1px solid #22c55e; color: #22c55e;
+    padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .wr-btn-refresh:hover { background: #22c55e; color: #0a0e17; }
+  .wr-btn-refresh:disabled { opacity: 0.5; cursor: default; background: #1a3a28; color: #22c55e; }
+
+  /* Market Strip */
+  .wr-market-strip {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: stretch;
+  }
+  .wr-market-item {
+    background: #111827; border: 1px solid #1c2333; border-radius: 6px;
+    padding: 6px 14px; display: flex; flex-direction: column; align-items: center; min-width: 90px;
+  }
+  .wr-market-item.highlight { background: #112a1a; border-color: #22c55e; }
+  .wr-market-label { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+  .wr-market-val { font-size: 18px; font-weight: 700; color: #e6edf3; font-family: 'IBM Plex Mono', monospace; }
+  .wr-market-val.accent { color: #22c55e; }
+  .wr-market-chg { font-size: 12px; font-family: 'IBM Plex Mono', monospace; }
+  .wr-market-chg.up { color: #22c55e; }
+  .wr-market-chg.down { color: #ef4444; }
+
+  /* Delta Card */
+  .wr-delta-card {
+    background: #1a1535; border: 1px solid #a78bfa; border-radius: 8px;
+    padding: 12px 16px; margin: 14px 0; font-size: 14px; color: #d4d4ea; line-height: 1.6;
+  }
+  .wr-delta-card strong { color: #a78bfa; }
+
+  /* Tabs */
+  .wr-tabs {
+    display: flex; gap: 4px; border-bottom: 1px solid #1c2333; padding: 8px 0; margin-bottom: 16px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .wr-tab {
+    background: transparent; border: 1px solid transparent; color: #8b949e;
+    padding: 10px 18px; border-radius: 6px 6px 0 0; cursor: pointer; font-size: 14px;
+    font-family: inherit; font-weight: 500; white-space: nowrap; transition: all 0.15s;
+  }
+  .wr-tab:hover { color: #c8cdd5; background: #111827; }
+  .wr-tab.active { color: #e6edf3; background: #111827; border-color: #1c2333; border-bottom-color: #111827; font-weight: 600; }
+  .wr-tab-badge {
+    background: #1c2333; color: #8b949e; font-size: 12px; padding: 1px 7px;
+    border-radius: 10px; margin-left: 6px; font-weight: 600;
+  }
+
+  /* Main */
+  .wr-main { min-height: 50vh; }
+
+  /* Probability Overview */
+  .wr-prob-overview { margin-bottom: 20px; }
+  .wr-prob-bar-container {
+    display: flex; height: 28px; border-radius: 6px; overflow: hidden; gap: 2px;
+    background: #111827; margin-bottom: 10px;
+  }
+  .wr-prob-segment { cursor: pointer; transition: opacity 0.2s; min-width: 3px; }
+  .wr-prob-segment:hover { opacity: 0.8; }
+  .wr-prob-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .wr-legend-item { font-size: 13px; color: #8b949e; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+  .wr-legend-item:hover { color: #c8cdd5; }
+  .wr-legend-item strong { color: #e6edf3; }
+  .wr-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* Scenario Grid */
+  .wr-scenario-grid { display: flex; flex-direction: column; gap: 8px; }
+  .wr-scenario-card {
+    background: #111827; border: 1px solid #1c2333; border-radius: 8px;
+    transition: all 0.2s; overflow: hidden;
+  }
+  .wr-scenario-card.expanded { border-color: #2d3f5f; }
+  .wr-scenario-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px; cursor: pointer; gap: 16px;
+  }
+  .wr-scenario-header:hover { background: #151d2e; }
+  .wr-scenario-info { flex: 1; }
+  .wr-scenario-name { font-size: 15px; font-weight: 600; color: #e6edf3; }
+  .wr-scenario-range { font-size: 13px; color: #8b949e; margin-top: 2px; }
+  .wr-scenario-prob-area { text-align: right; min-width: 70px; }
+  .wr-scenario-prob {
+    font-size: 24px; font-weight: 700; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .wr-scenario-prob:hover { text-decoration: underline; }
+  .wr-mini-bar { height: 4px; background: #1c2333; border-radius: 2px; margin-top: 4px; overflow: hidden; }
+  .wr-mini-bar > div { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .wr-prob-edit { display: flex; gap: 4px; align-items: center; }
+  .wr-prob-input {
+    width: 50px; background: #0a0e17; border: 1px solid #22c55e; color: #22c55e;
+    border-radius: 4px; padding: 4px 6px; font-size: 16px; font-family: 'IBM Plex Mono', monospace;
+    text-align: right;
+  }
+  .wr-prob-confirm {
+    background: #1a3a28; border: 1px solid #22c55e; color: #22c55e;
+    padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 13px; font-family: inherit;
+  }
+
+  /* Scenario Detail (expanded) */
+  .wr-scenario-detail { padding: 0 16px 16px; border-top: 1px solid #1c2333; }
+  .wr-scenario-driver { font-size: 14px; color: #b0b8c4; margin-top: 12px; }
+  .wr-precedent {
+    background: #0d1420; border: 1px solid #1c2333; border-radius: 6px;
+    padding: 12px; margin-top: 10px;
+  }
+  .wr-precedent-title { font-size: 13px; font-weight: 600; color: #06b6d4; margin-bottom: 8px; }
+  .wr-precedent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; color: #b0b8c4; }
+  .wr-precedent-label { color: #8b949e; font-size: 12px; display: block; }
+  .wr-precedent-source { font-size: 12px; color: #8b949e; margin-top: 6px; }
+
+  .wr-scenario-pnl { background: #0d1420; border: 1px solid #1c2333; border-radius: 6px; padding: 10px 12px; margin-top: 10px; }
+  .wr-pnl-title { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+  .wr-pnl-value { font-size: 14px; font-weight: 600; margin-right: 12px; font-family: 'IBM Plex Mono', monospace; }
+  .wr-pnl-value.profit { color: #22c55e; }
+  .wr-pnl-value.loss { color: #ef4444; }
+
+  .wr-hint { font-size: 13px; color: #8b949e; margin-top: 12px; }
+
+  /* Updates */
+  .wr-updates { display: flex; flex-direction: column; gap: 8px; }
+  .wr-empty { text-align: center; padding: 60px 20px; }
+  .wr-empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .wr-empty h3 { color: #e6edf3; margin: 0 0 8px; }
+  .wr-empty p { color: #8b949e; max-width: 400px; margin: 0 auto; font-size: 14px; }
+
+  .wr-update-card {
+    background: #111827; border: 1px solid #1c2333; border-left: 3px solid #8b949e;
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .wr-update-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .wr-update-type { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  .wr-update-badge {
+    font-size: 12px; padding: 1px 7px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;
+  }
+  .wr-update-badge.fact { background: #052e16; color: #22c55e; }
+  .wr-update-badge.reported { background: #2d2204; color: #eab308; }
+  .wr-update-badge.derived { background: #1a1035; color: #a78bfa; }
+  .wr-update-time { font-size: 12px; color: #8b949e; margin-left: auto; }
+  .wr-update-title { font-size: 16px; color: #e6edf3; font-weight: 600; margin: 0 0 6px; line-height: 1.4; }
+  .wr-update-body { font-size: 14px; color: #b0b8c4; margin: 0 0 8px; line-height: 1.6; }
+  .wr-update-source { font-size: 12px; color: #8b949e; }
+  .wr-update-source a { color: #22c55e; }
+
+  .wr-update-impact {
+    background: #0d1420; border: 1px solid #1c2333; border-radius: 6px;
+    padding: 10px 12px; margin-top: 10px; font-size: 13px; color: #b0b8c4;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  }
+  .wr-impact-shift { font-family: 'IBM Plex Mono', monospace; }
+  .wr-impact-lr { color: #8b949e; }
+  .wr-math-toggle {
+    background: transparent; border: none; color: #a78bfa; cursor: pointer;
+    font-size: 12px; font-family: inherit; padding: 0; font-weight: 600;
+  }
+  .wr-math-toggle:hover { text-decoration: underline; }
+
+  /* Bayesian Math */
+  .wr-math-detail {
+    background: #080c14; border: 1px solid #1c2333; border-radius: 6px;
+    padding: 12px; margin-top: 8px; width: 100%;
+  }
+  .wr-math-title { font-size: 12px; color: #a78bfa; font-weight: 600; letter-spacing: 1px; margin-bottom: 8px; }
+  .wr-math-line { font-size: 13px; color: #8b949e; margin-bottom: 8px; }
+  .wr-math-step { padding: 6px 0; border-bottom: 1px solid #1c2333; }
+  .wr-math-step:last-of-type { border-bottom: none; }
+  .wr-math-evidence { font-size: 13px; color: #b0b8c4; }
+  .wr-math-meta { font-size: 12px; color: #8b949e; margin-top: 2px; }
+  .wr-math-reasoning { font-size: 12px; color: #8b949e; }
+  .wr-math-odds { font-size: 12px; color: #8b949e; font-family: 'IBM Plex Mono', monospace; }
+  .wr-math-result { font-size: 14px; color: #a78bfa; font-weight: 700; margin-top: 8px; }
+
+  /* Position Simulator */
+  .wr-simulator { max-width: 900px; }
+  .wr-sim-intro h3 { color: #e6edf3; margin: 0 0 6px; }
+  .wr-sim-intro p { color: #8b949e; font-size: 14px; margin: 0 0 16px; }
+  .wr-sim-form {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 16px;
+  }
+  .wr-sim-input {
+    background: #111827; border: 1px solid #1c2333; color: #e6edf3;
+    padding: 10px 12px; border-radius: 6px; font-size: 15px; font-family: inherit;
+    width: 140px;
+  }
+  .wr-sim-input.small { width: 70px; }
+  .wr-sim-input:focus { border-color: #22c55e; outline: none; }
+  .wr-sim-select {
+    background: #111827; border: 1px solid #1c2333; color: #e6edf3;
+    padding: 10px 12px; border-radius: 6px; font-size: 15px; font-family: inherit;
+  }
+  .wr-btn-add {
+    background: #1a3a28; border: 1px solid #22c55e; color: #22c55e;
+    padding: 10px 18px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
+    font-family: inherit;
+  }
+  .wr-btn-add:hover { background: #22c55e; color: #0a0e17; }
+  .wr-sim-positions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; align-items: center; }
+  .wr-pos-tag {
+    background: #1c2333; color: #b0b8c4; padding: 4px 10px; border-radius: 20px;
+    font-size: 13px; display: flex; align-items: center; gap: 6px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .wr-pos-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 0 2px; }
+  .wr-btn-clear { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 12px; }
+  .wr-btn-clear:hover { color: #ef4444; }
+
+  /* Sim Table */
+  .wr-sim-results { overflow-x: auto; }
+  .wr-sim-table {
+    width: 100%; border-collapse: collapse; font-size: 14px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .wr-sim-table th {
+    text-align: left; padding: 10px 12px; color: #8b949e; font-size: 12px;
+    border-bottom: 1px solid #1c2333; font-weight: 600; white-space: nowrap;
+  }
+  .wr-sim-table td { padding: 10px 12px; border-bottom: 1px solid #111827; color: #b0b8c4; }
+  .wr-sim-table .profit { color: #22c55e; font-weight: 600; }
+  .wr-sim-table .loss { color: #ef4444; font-weight: 600; }
+  .wr-sim-scenario { font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #e6edf3; }
+  .wr-sim-total { font-weight: 700; }
+  .wr-sim-expected { background: #111827; }
+  .wr-sim-expected td { border-bottom: none; }
+  .wr-sim-empty { padding: 30px 0; }
+  .wr-sim-empty p { color: #8b949e; font-size: 14px; }
+
+  /* Players Drawer */
+  .wr-players-drawer {
+    position: fixed; top: 0; right: 0; width: min(420px, 90vw); height: 100vh;
+    background: #0d1117; border-left: 1px solid #1c2333;
+    overflow-y: auto; padding: 20px; z-index: 100;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  .wr-players-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .wr-players-header h3 { color: #e6edf3; margin: 0; }
+  .wr-drawer-close { background: none; border: none; color: #8b949e; font-size: 24px; cursor: pointer; }
+  .wr-players-grid { display: flex; flex-direction: column; gap: 8px; }
+  .wr-player-card { background: #111827; border: 1px solid #1c2333; border-radius: 8px; padding: 12px; }
+  .wr-player-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  .wr-player-flag { font-size: 18px; }
+  .wr-player-name { font-size: 14px; font-weight: 600; color: #e6edf3; }
+  .wr-player-status { font-size: 12px; border: 1px solid; padding: 1px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px; margin-left: auto; }
+  .wr-player-latest { font-size: 13px; color: #eab308; line-height: 1.5; }
+  .wr-player-source { color: #8b949e; }
+  .wr-player-objective { font-size: 13px; color: #8b949e; line-height: 1.5; }
+  .wr-notes-toggle {
+    width: 100%; margin-top: 12px; background: transparent;
+    border: 1px solid #1c2333; color: #8b949e; padding: 8px;
+    border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit;
+  }
+  .wr-notes-area {
+    width: 100%; min-height: 120px; margin-top: 8px; background: #111827;
+    border: 1px solid #1c2333; border-radius: 6px; padding: 10px;
+    color: #b0b8c4; font-size: 14px; font-family: inherit; line-height: 1.6; resize: vertical;
+  }
+
+  /* Footer */
+  .wr-footer {
+    text-align: center; padding: 20px; font-size: 12px; color: #8b949e;
+    border-top: 1px solid #1c2333; margin-top: 30px;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .wr-app { padding: 0 10px; }
+    .wr-brand h1 { font-size: 18px; }
+    .wr-market-strip { gap: 4px; }
+    .wr-market-item { padding: 4px 8px; min-width: 70px; }
+    .wr-market-val { font-size: 15px; }
+    .wr-market-label { font-size: 12px; }
+    .wr-scenario-prob { font-size: 20px; }
+    .wr-tabs { gap: 2px; }
+    .wr-tab { padding: 8px 12px; font-size: 13px; }
+    .wr-sim-form { flex-direction: column; align-items: stretch; }
+    .wr-sim-input, .wr-sim-select, .wr-btn-add { width: 100%; }
+    .wr-sim-input.small { width: 100%; }
+    .wr-precedent-grid { grid-template-columns: 1fr; }
+  }
+`;
