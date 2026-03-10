@@ -51,7 +51,6 @@ export default function WarRoomDashboard() {
   const [mobilePanel, setMobilePanel] = useState<'feed' | 'scenarios' | 'actors'>('feed');
   const feedRef = useRef<HTMLDivElement>(null);
 
-  // Load state
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -65,7 +64,6 @@ export default function WarRoomDashboard() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
   }, []);
 
-  // Save last visit on unload
   useEffect(() => {
     const handleUnload = () => {
       if (state) {
@@ -76,7 +74,6 @@ export default function WarRoomDashboard() {
     return () => window.removeEventListener('beforeunload', handleUnload);
   }, [state]);
 
-  // Poll market data
   useEffect(() => {
     const f = async () => {
       try {
@@ -89,7 +86,6 @@ export default function WarRoomDashboard() {
     return () => clearInterval(iv);
   }, []);
 
-  // Auto AI refresh
   useEffect(() => {
     if (!state) return;
     const last = state.lastAiRefresh ? new Date(state.lastAiRefresh).getTime() : 0;
@@ -140,7 +136,7 @@ export default function WarRoomDashboard() {
   if (loading || !state) {
     return (
       <div style={{ background: '#080c14', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#4ade80', fontSize: 12, letterSpacing: 4, fontFamily: "'IBM Plex Mono', monospace" }}>
+        <div style={{ color: '#4ade80', fontSize: 14, letterSpacing: 4, fontFamily: "'IBM Plex Mono', monospace" }}>
           INITIALIZING WAR ROOM...
         </div>
       </div>
@@ -159,19 +155,19 @@ export default function WarRoomDashboard() {
 
       {/* ═══ COMMAND BAR ═══ */}
       <div style={{
-        borderBottom: '1px solid #1e3a2f', padding: '8px 12px',
+        borderBottom: '1px solid #1e3a2f', padding: '12px 16px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        flexWrap: 'wrap', gap: 6, position: 'sticky', top: 0, background: '#080c14', zIndex: 50,
+        flexWrap: 'wrap', gap: 10, position: 'sticky', top: 0, background: '#080c14', zIndex: 50,
       }}>
-        <div style={{ minWidth: 180 }}>
-          <div style={{ color: '#4ade80', fontSize: 10, letterSpacing: 3 }}>◆ WAR ROOM</div>
-          <div style={{ color: '#6b7280', fontSize: 8, marginTop: 1 }}>
+        <div style={{ minWidth: 200 }}>
+          <div style={{ color: '#4ade80', fontSize: 16, letterSpacing: 3, fontWeight: 700 }}>◆ WAR ROOM</div>
+          <div style={{ color: '#6b7280', fontSize: 11, marginTop: 3 }}>
             Day {warDay()} · Next: {countdown(state.lastAiRefresh)}
             {state.lastAiRefresh && ` · Last: ${timeAgo(state.lastAiRefresh)}`}
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           {[
             { l: 'NIFTY', v: marketData?.nifty, c: marketData?.niftyChangePct, f: (n: number) => n.toLocaleString() },
             { l: 'BRENT', v: marketData?.oil, c: marketData?.oilChangePct, f: (n: number) => `$${n}` },
@@ -179,15 +175,15 @@ export default function WarRoomDashboard() {
             { l: 'VIX', v: marketData?.vix, c: marketData?.vixChangePct, f: (n: number) => n.toFixed(1) },
           ].map(t => (
             <div key={t.l} style={{
-              background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 3,
-              padding: '2px 7px', textAlign: 'center', minWidth: 64,
+              background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 4,
+              padding: '5px 12px', textAlign: 'center', minWidth: 80,
             }}>
-              <div style={{ fontSize: 7, color: '#6b7280', letterSpacing: 2 }}>{t.l}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: t.v ? '#e6edf3' : '#374151' }}>
+              <div style={{ fontSize: 10, color: '#6b7280', letterSpacing: 2 }}>{t.l}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: t.v ? '#e6edf3' : '#374151' }}>
                 {t.v ? t.f(t.v) : '—'}
               </div>
               {t.c != null && t.c !== 0 && (
-                <div style={{ fontSize: 7, color: dc(t.c) }}>
+                <div style={{ fontSize: 11, color: dc(t.c) }}>
                   {t.c > 0 ? '↑' : '↓'}{Math.abs(t.c).toFixed(1)}%
                 </div>
               )}
@@ -195,20 +191,20 @@ export default function WarRoomDashboard() {
           ))}
 
           <div style={{
-            background: '#112a1a', border: '1px solid #4ade80', borderRadius: 3,
-            padding: '2px 8px', textAlign: 'center',
+            background: '#112a1a', border: '1px solid #4ade80', borderRadius: 4,
+            padding: '5px 12px', textAlign: 'center',
           }}>
-            <div style={{ fontSize: 7, color: '#6b7280', letterSpacing: 2 }}>P-WEIGHT</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#4ade80' }}>{pw.toLocaleString()}</div>
-            {spot > 0 && <div style={{ fontSize: 7, color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap}</div>}
+            <div style={{ fontSize: 10, color: '#6b7280', letterSpacing: 2 }}>P-WEIGHT</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#4ade80' }}>{pw.toLocaleString()}</div>
+            {spot > 0 && <div style={{ fontSize: 11, color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap.toFixed(0)}</div>}
           </div>
 
           <button onClick={triggerAiRefresh} disabled={aiLoading} style={{
             background: aiLoading ? '#0d1117' : '#112a1a',
             border: `1px solid ${aiLoading ? '#374151' : '#a78bfa'}`,
             color: aiLoading ? '#6b7280' : '#a78bfa',
-            padding: '5px 10px', borderRadius: 3, cursor: aiLoading ? 'default' : 'pointer',
-            fontSize: 8, letterSpacing: 2, fontFamily: 'inherit',
+            padding: '8px 16px', borderRadius: 4, cursor: aiLoading ? 'default' : 'pointer',
+            fontSize: 12, letterSpacing: 2, fontFamily: 'inherit', fontWeight: 600,
           }}>
             {aiLoading ? '◌ RUNNING...' : '⚡ REFRESH'}
           </button>
@@ -217,57 +213,57 @@ export default function WarRoomDashboard() {
 
       {/* ═══ MOBILE TABS ═══ */}
       <div className="mobile-tabs" style={{
-        display: 'none', padding: '6px 12px', gap: 4, borderBottom: '1px solid #1e3a2f',
+        display: 'none', padding: '8px 16px', gap: 6, borderBottom: '1px solid #1e3a2f',
       }}>
         {(['feed', 'scenarios', 'actors'] as const).map(p => (
           <button key={p} onClick={() => setMobilePanel(p)} style={{
             flex: 1, background: mobilePanel === p ? '#112a1a' : 'transparent',
             border: `1px solid ${mobilePanel === p ? '#4ade80' : '#1e3a2f'}`,
             color: mobilePanel === p ? '#4ade80' : '#6b7280',
-            padding: '4px', borderRadius: 3, fontSize: 8, letterSpacing: 1,
-            textTransform: 'uppercase', fontFamily: 'inherit', cursor: 'pointer',
+            padding: '8px', borderRadius: 4, fontSize: 12, letterSpacing: 1,
+            textTransform: 'uppercase', fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600,
           }}>{p}</button>
         ))}
       </div>
 
       {/* ═══ THREE-PANEL LAYOUT ═══ */}
       <div className="main-grid" style={{
-        display: 'grid', gridTemplateColumns: '210px 1fr 300px',
-        height: 'calc(100vh - 60px)', overflow: 'hidden',
+        display: 'grid', gridTemplateColumns: '240px 1fr 320px',
+        height: 'calc(100vh - 70px)', overflow: 'hidden',
       }}>
 
         {/* ─── LEFT: Actors ─── */}
         <div className="panel-left" style={{
-          borderRight: '1px solid #1e3a2f', overflowY: 'auto', padding: '10px 8px',
+          borderRight: '1px solid #1e3a2f', overflowY: 'auto', padding: '12px 10px',
         }}>
-          <div style={{ fontSize: 7, color: '#6b7280', letterSpacing: 2, marginBottom: 8 }}>ACTORS ({state.actors.length})</div>
+          <div style={{ fontSize: 10, color: '#6b7280', letterSpacing: 2, marginBottom: 10, fontWeight: 600 }}>ACTORS ({state.actors.length})</div>
           {state.actors.map(a => (
             <div key={a.id} style={{
-              background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 4,
-              padding: '6px 8px', marginBottom: 5,
+              background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 5,
+              padding: '8px 10px', marginBottom: 6,
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <span style={{ fontSize: 13 }}>{a.flag}</span>
-                <span style={{ fontSize: 6, color: a.statusColor, border: `1px solid ${a.statusColor}`, padding: '0px 3px', borderRadius: 2, letterSpacing: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                <span style={{ fontSize: 14 }}>{a.flag}</span>
+                <span style={{ fontSize: 9, color: a.statusColor, border: `1px solid ${a.statusColor}`, padding: '1px 5px', borderRadius: 3, letterSpacing: 1, fontWeight: 600 }}>
                   {a.status}
                 </span>
               </div>
-              <div style={{ fontSize: 9, color: '#e6edf3', fontWeight: 700 }}>{a.name}</div>
+              <div style={{ fontSize: 12, color: '#e6edf3', fontWeight: 700 }}>{a.name}</div>
               {a.latestDevelopment ? (
-                <div style={{ fontSize: 7, color: '#eab308', marginTop: 3, lineHeight: 1.4 }}>
+                <div style={{ fontSize: 10, color: '#eab308', marginTop: 4, lineHeight: 1.5 }}>
                   {a.latestDevelopment}
-                  <span style={{ color: '#374151' }}> — {a.latestDevSource}</span>
+                  <span style={{ color: '#4b5563' }}> — {a.latestDevSource}</span>
                 </div>
               ) : (
-                <div style={{ fontSize: 7, color: '#374151', marginTop: 3 }}>{a.objective.slice(0, 55)}...</div>
+                <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, lineHeight: 1.4 }}>{a.objective.slice(0, 60)}...</div>
               )}
             </div>
           ))}
 
           <button onClick={() => setShowNotes(!showNotes)} style={{
-            width: '100%', marginTop: 8, background: 'transparent',
-            border: '1px solid #1e3a2f', color: '#6b7280', padding: '4px',
-            borderRadius: 3, fontSize: 8, letterSpacing: 2, cursor: 'pointer', fontFamily: 'inherit',
+            width: '100%', marginTop: 10, background: 'transparent',
+            border: '1px solid #1e3a2f', color: '#6b7280', padding: '6px',
+            borderRadius: 4, fontSize: 11, letterSpacing: 2, cursor: 'pointer', fontFamily: 'inherit',
           }}>
             {showNotes ? '▼ NOTES' : '▶ NOTES'}
           </button>
@@ -275,27 +271,27 @@ export default function WarRoomDashboard() {
             <textarea value={state.userNotes} onChange={e => save({ ...state, userNotes: e.target.value })}
               placeholder="Paste news, intel..."
               style={{
-                width: '100%', minHeight: 100, marginTop: 4, background: '#0d1117',
-                border: '1px solid #1e3a2f', borderRadius: 3, padding: 6,
-                color: '#c9d1d9', fontSize: 8, fontFamily: 'inherit', lineHeight: 1.5, resize: 'vertical',
+                width: '100%', minHeight: 120, marginTop: 6, background: '#0d1117',
+                border: '1px solid #1e3a2f', borderRadius: 4, padding: 8,
+                color: '#c9d1d9', fontSize: 11, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical',
               }} />
           )}
         </div>
 
         {/* ─── CENTER: Intelligence Feed ─── */}
         <div ref={feedRef} className="panel-center" style={{
-          overflowY: 'auto', padding: '10px 14px', borderRight: '1px solid #1e3a2f',
+          overflowY: 'auto', padding: '12px 18px', borderRight: '1px solid #1e3a2f',
         }}>
           {/* Delta card */}
           {newCards.length > 0 && lastVisitTime && (
             <div style={{
-              background: '#0d1020', border: '1px solid #a78bfa', borderRadius: 5,
-              padding: '8px 12px', marginBottom: 10,
+              background: '#0d1020', border: '1px solid #a78bfa', borderRadius: 6,
+              padding: '10px 14px', marginBottom: 14,
             }}>
-              <div style={{ fontSize: 7, color: '#a78bfa', letterSpacing: 2, marginBottom: 4 }}>
+              <div style={{ fontSize: 10, color: '#a78bfa', letterSpacing: 2, marginBottom: 5, fontWeight: 600 }}>
                 SINCE LAST VISIT ({timeAgo(lastVisitTime.toISOString())})
               </div>
-              <div style={{ fontSize: 10, color: '#e6edf3' }}>
+              <div style={{ fontSize: 13, color: '#e6edf3', lineHeight: 1.5 }}>
                 {newCards.length} update{newCards.length !== 1 ? 's' : ''}.
                 P-weighted Nifty: {pw.toLocaleString()}.
                 {marketData && ` Oil $${marketData.oil}. VIX ${marketData.vix?.toFixed(1) || '?'}.`}
@@ -303,69 +299,69 @@ export default function WarRoomDashboard() {
             </div>
           )}
 
-          <div style={{ fontSize: 7, color: '#6b7280', letterSpacing: 2, marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: '#6b7280', letterSpacing: 2, marginBottom: 12, fontWeight: 600 }}>
             INTELLIGENCE FEED
-            <span style={{ color: '#374151', marginLeft: 6 }}>{state.feedCards.length} entries</span>
+            <span style={{ color: '#4b5563', marginLeft: 8, fontWeight: 400 }}>{state.feedCards.length} entries</span>
           </div>
 
           {state.feedCards.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '50px 16px', color: '#374151' }}>
-              <div style={{ fontSize: 20, marginBottom: 8 }}>◇</div>
-              <div style={{ fontSize: 10 }}>No intelligence yet.</div>
-              <div style={{ fontSize: 8, marginTop: 3 }}>Click ⚡ REFRESH to run the first analysis.</div>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#4b5563' }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>◇</div>
+              <div style={{ fontSize: 14 }}>No intelligence yet.</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>Click ⚡ REFRESH to run the first analysis.</div>
             </div>
           )}
 
           {state.feedCards.map(card => (
             <div key={card.id} style={{
-              background: '#0d1117', borderRadius: 4,
+              background: '#0d1117', borderRadius: 5,
               borderLeft: `3px solid ${fcBorder(card.type)}`,
-              padding: '8px 10px', marginBottom: 6,
+              padding: '10px 14px', marginBottom: 8, animation: 'slide-in 0.3s ease',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span style={{ fontSize: 7, color: fcBorder(card.type), letterSpacing: 1 }}>{card.type.replace('_', ' ')}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 10, color: fcBorder(card.type), letterSpacing: 1, fontWeight: 600 }}>{card.type.replace('_', ' ')}</span>
                   {card.classification && (
                     <span style={{
-                      fontSize: 7, letterSpacing: 1, padding: '0px 4px',
+                      fontSize: 9, letterSpacing: 1, padding: '1px 6px',
                       border: `1px solid ${card.classification === 'FACT' ? '#4ade80' : card.classification === 'REPORTED' ? '#eab308' : '#a78bfa'}`,
                       color: card.classification === 'FACT' ? '#4ade80' : card.classification === 'REPORTED' ? '#eab308' : '#a78bfa',
-                      borderRadius: 2,
+                      borderRadius: 3, fontWeight: 600,
                     }}>{card.classification}</span>
                   )}
                 </div>
-                <span style={{ fontSize: 7, color: '#374151' }}>{timeAgo(card.timestamp)}</span>
+                <span style={{ fontSize: 10, color: '#4b5563' }}>{timeAgo(card.timestamp)}</span>
               </div>
 
-              <div style={{ fontSize: 10, color: '#e6edf3', fontWeight: 600, marginBottom: 3, lineHeight: 1.4 }}>{card.title}</div>
-              <div style={{ fontSize: 8, color: '#9ca3af', lineHeight: 1.5, marginBottom: 4 }}>{card.body}</div>
+              <div style={{ fontSize: 14, color: '#e6edf3', fontWeight: 600, marginBottom: 5, lineHeight: 1.5 }}>{card.title}</div>
+              <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 6 }}>{card.body}</div>
 
               {card.source && (
-                <div style={{ fontSize: 7, color: '#374151' }}>
+                <div style={{ fontSize: 10, color: '#4b5563' }}>
                   Source: {card.source}
-                  {card.sourceUrl && <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80', marginLeft: 3 }}>↗</a>}
+                  {card.sourceUrl && <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80', marginLeft: 4 }}>↗</a>}
                 </div>
               )}
 
               {card.scenarioImpact && card.scenarioImpact.posterior > 0 && (
-                <div style={{ marginTop: 6, padding: '5px 7px', background: '#080c14', borderRadius: 3, border: '1px solid #1e3a2f' }}>
+                <div style={{ marginTop: 8, padding: '8px 10px', background: '#080c14', borderRadius: 4, border: '1px solid #1e3a2f' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 8, color: '#c9d1d9' }}>{card.scenarioImpact.scenario}</span>
-                    <span style={{ fontSize: 10, fontWeight: 700 }}>
+                    <span style={{ fontSize: 11, color: '#c9d1d9' }}>{card.scenarioImpact.scenario}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>
                       <span style={{ color: '#6b7280' }}>{card.scenarioImpact.prior}%</span>
-                      <span style={{ color: '#374151' }}> → </span>
+                      <span style={{ color: '#4b5563' }}> → </span>
                       <span style={{ color: card.scenarioImpact.posterior > card.scenarioImpact.prior ? '#ef4444' : '#4ade80' }}>
                         {card.scenarioImpact.posterior}%
                       </span>
                     </span>
                   </div>
-                  <div style={{ fontSize: 7, color: '#6b7280', marginTop: 1 }}>LR: {card.scenarioImpact.likelihoodRatio}x</div>
+                  <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>LR: {card.scenarioImpact.likelihoodRatio}x</div>
 
                   {card.bayesianTrail && card.bayesianTrail.length > 0 && (
                     <>
                       <button onClick={() => toggleMath(card.id)} style={{
                         background: 'transparent', border: 'none', color: '#a78bfa',
-                        fontSize: 7, cursor: 'pointer', padding: '3px 0', fontFamily: 'inherit', letterSpacing: 1,
+                        fontSize: 10, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', letterSpacing: 1, fontWeight: 600,
                       }}>
                         {expandedMath.has(card.id) ? '▼ HIDE MATH' : '▶ SHOW MATH'}
                       </button>
@@ -381,73 +377,73 @@ export default function WarRoomDashboard() {
         </div>
 
         {/* ─── RIGHT: Scenario Engine ─── */}
-        <div className="panel-right" style={{ overflowY: 'auto', padding: '10px 8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 7, color: '#6b7280', letterSpacing: 2 }}>SCENARIO ENGINE</div>
-            <div style={{ fontSize: 10, color: '#4ade80', fontWeight: 700 }}>{pw.toLocaleString()}</div>
+        <div className="panel-right" style={{ overflowY: 'auto', padding: '12px 10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: '#6b7280', letterSpacing: 2, fontWeight: 600 }}>SCENARIO ENGINE</div>
+            <div style={{ fontSize: 14, color: '#4ade80', fontWeight: 700 }}>{pw.toLocaleString()}</div>
           </div>
 
           {spot > 0 && (
             <div style={{
-              background: '#112a1a', border: '1px solid #1e3a2f', borderRadius: 3,
-              padding: '5px 8px', marginBottom: 8, textAlign: 'center', fontSize: 8,
+              background: '#112a1a', border: '1px solid #1e3a2f', borderRadius: 4,
+              padding: '7px 10px', marginBottom: 10, textAlign: 'center', fontSize: 11,
             }}>
               <span style={{ color: '#6b7280' }}>SPOT {spot.toLocaleString()}</span>
               <span style={{ color: '#374151' }}> · </span>
               <span style={{ color: '#4ade80' }}>TARGET {pw.toLocaleString()}</span>
               <span style={{ color: '#374151' }}> · </span>
-              <span style={{ color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap} ({gapPct}%)</span>
+              <span style={{ color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap.toFixed(0)} ({gapPct}%)</span>
             </div>
           )}
 
-          <div style={{ fontSize: 6, color: '#374151', letterSpacing: 1, marginBottom: 6 }}>CLICK % TO EDIT · AUTO-REDISTRIBUTES TO 100</div>
+          <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: 1, marginBottom: 8 }}>CLICK % TO EDIT · AUTO-REDISTRIBUTES TO 100</div>
 
           {state.scenarios.map((s, i) => {
             const bc = s.prob > 30 ? '#4ade80' : s.prob > 15 ? '#eab308' : s.prob > 7 ? '#f97316' : '#ef4444';
             return (
-              <div key={i} style={{ background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 4, padding: '7px 9px', marginBottom: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                  <div style={{ fontSize: 9, color: '#e6edf3', fontWeight: 600, flex: 1 }}>{s.scenario}</div>
+              <div key={i} style={{ background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 5, padding: '9px 11px', marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <div style={{ fontSize: 12, color: '#e6edf3', fontWeight: 600, flex: 1 }}>{s.scenario}</div>
                   {editingScenario === i ? (
-                    <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                       <input value={editInput} onChange={e => setEditInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') handleProbEdit(i); if (e.key === 'Escape') setEditingScenario(null); }}
-                        autoFocus style={{ width: 36, background: '#080c14', border: '1px solid #4ade80', color: '#4ade80', borderRadius: 2, padding: '1px 3px', fontSize: 10, fontFamily: 'inherit', textAlign: 'right' }}
+                        autoFocus style={{ width: 42, background: '#080c14', border: '1px solid #4ade80', color: '#4ade80', borderRadius: 3, padding: '2px 4px', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }}
                       />
-                      <button onClick={() => handleProbEdit(i)} style={{ background: '#112a1a', border: '1px solid #4ade80', color: '#4ade80', borderRadius: 2, padding: '1px 5px', cursor: 'pointer', fontSize: 8, fontFamily: 'inherit' }}>✓</button>
+                      <button onClick={() => handleProbEdit(i)} style={{ background: '#112a1a', border: '1px solid #4ade80', color: '#4ade80', borderRadius: 3, padding: '2px 7px', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>✓</button>
                     </div>
                   ) : (
                     <span onClick={() => { setEditingScenario(i); setEditInput(String(s.prob)); }}
-                      style={{ fontSize: 12, color: bc, fontWeight: 700, cursor: 'pointer', minWidth: 36, textAlign: 'right' }}>
+                      style={{ fontSize: 16, color: bc, fontWeight: 700, cursor: 'pointer', minWidth: 42, textAlign: 'right' }}>
                       {s.prob}%
                     </span>
                   )}
                 </div>
 
-                <div style={{ background: '#080c14', borderRadius: 2, height: 3, marginBottom: 3 }}>
-                  <div style={{ background: bc, height: 3, borderRadius: 2, width: `${s.prob}%`, transition: 'width 0.3s' }} />
+                <div style={{ background: '#080c14', borderRadius: 3, height: 5, marginBottom: 5 }}>
+                  <div style={{ background: bc, height: 5, borderRadius: 3, width: `${s.prob}%`, transition: 'width 0.3s' }} />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 7 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
                   <span style={{ color: '#a78bfa' }}>Nifty {s.range}</span>
-                  <span style={{ color: '#374151' }}>{s.ivEstimate}</span>
+                  <span style={{ color: '#4b5563' }}>{s.ivEstimate}</span>
                 </div>
-                <div style={{ fontSize: 7, color: '#374151', marginTop: 1 }}>{s.driver}</div>
+                <div style={{ fontSize: 10, color: '#4b5563', marginTop: 2, lineHeight: 1.4 }}>{s.driver}</div>
 
                 {s.analogues.length > 0 && (
                   <>
                     <button onClick={() => setExpandedAnalogue(expandedAnalogue === i ? null : i)}
-                      style={{ background: 'transparent', border: 'none', color: '#06b6d4', fontSize: 7, cursor: 'pointer', padding: '3px 0', fontFamily: 'inherit', letterSpacing: 1 }}>
+                      style={{ background: 'transparent', border: 'none', color: '#06b6d4', fontSize: 10, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', letterSpacing: 1, fontWeight: 600 }}>
                       {expandedAnalogue === i ? '▼ PRECEDENT' : '▶ PRECEDENT'}
                     </button>
                     {expandedAnalogue === i && s.analogues.map((a, ai) => (
-                      <div key={ai} style={{ background: '#080c14', borderRadius: 3, padding: '5px 7px', border: '1px solid #0e3347', marginTop: 2 }}>
-                        <div style={{ fontSize: 8, color: '#06b6d4', marginBottom: 2 }}>{a.event} ({a.date})</div>
-                        <div style={{ fontSize: 7, color: '#9ca3af', lineHeight: 1.5 }}>
+                      <div key={ai} style={{ background: '#080c14', borderRadius: 4, padding: '7px 9px', border: '1px solid #0e3347', marginTop: 3 }}>
+                        <div style={{ fontSize: 11, color: '#06b6d4', marginBottom: 3, fontWeight: 600 }}>{a.event} ({a.date})</div>
+                        <div style={{ fontSize: 10, color: '#9ca3af', lineHeight: 1.6 }}>
                           Oil: {a.oilMove} · Nifty: {a.niftyMove}<br />
                           VIX: {a.vixMove} · Recovery: {a.recoveryDays} sessions
                         </div>
-                        <div style={{ fontSize: 6, color: '#374151', marginTop: 1 }}>Source: {a.source}</div>
+                        <div style={{ fontSize: 9, color: '#4b5563', marginTop: 2 }}>Source: {a.source}</div>
                       </div>
                     ))}
                   </>
@@ -456,8 +452,8 @@ export default function WarRoomDashboard() {
             );
           })}
 
-          <div style={{ marginTop: 12, padding: '6px 8px', background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 3 }}>
-            <div style={{ fontSize: 6, color: '#374151', lineHeight: 1.5 }}>
+          <div style={{ marginTop: 14, padding: '8px 10px', background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 4 }}>
+            <div style={{ fontSize: 9, color: '#4b5563', lineHeight: 1.6 }}>
               Factual intelligence only. Not investment advice. Probabilities are Bayesian
               estimates with auditable math. Sources linked. Not SEBI registered.
             </div>
@@ -467,12 +463,19 @@ export default function WarRoomDashboard() {
 
       {/* Responsive styles */}
       <style>{`
+        @media (max-width: 1100px) {
+          .main-grid { grid-template-columns: 200px 1fr 280px !important; }
+        }
         @media (max-width: 900px) {
           .main-grid { grid-template-columns: 1fr !important; height: auto !important; }
           .panel-left { display: ${mobilePanel === 'actors' ? 'block' : 'none'} !important; border-right: none !important; }
-          .panel-center { display: ${mobilePanel === 'feed' ? 'block' : 'none'} !important; border-right: none !important; min-height: calc(100vh - 110px); }
+          .panel-center { display: ${mobilePanel === 'feed' ? 'block' : 'none'} !important; border-right: none !important; min-height: calc(100vh - 130px); }
           .panel-right { display: ${mobilePanel === 'scenarios' ? 'block' : 'none'} !important; }
           .mobile-tabs { display: flex !important; }
+        }
+        @media (max-width: 600px) {
+          .main-grid { padding: 0 !important; }
+          .panel-center, .panel-left, .panel-right { padding: 10px 12px !important; }
         }
       `}</style>
     </div>
@@ -482,20 +485,20 @@ export default function WarRoomDashboard() {
 function BayesianMathView({ trail, prior, posterior }: { trail: BayesianTrailItem[]; prior: number; posterior: number }) {
   const priorOdds = prior / (100 - prior);
   return (
-    <div style={{ marginTop: 4, padding: '6px', background: '#060a12', borderRadius: 3, border: '1px solid #1a1a2e' }}>
-      <div style={{ fontSize: 7, color: '#a78bfa', letterSpacing: 1, marginBottom: 4 }}>BAYESIAN AUDIT TRAIL</div>
-      <div style={{ fontSize: 7, color: '#6b7280', marginBottom: 4 }}>Prior: {prior}% → Odds: {priorOdds.toFixed(4)}</div>
+    <div style={{ marginTop: 6, padding: '8px', background: '#060a12', borderRadius: 4, border: '1px solid #1a1a2e' }}>
+      <div style={{ fontSize: 10, color: '#a78bfa', letterSpacing: 1, marginBottom: 5, fontWeight: 600 }}>BAYESIAN AUDIT TRAIL</div>
+      <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 6 }}>Prior: {prior}% → Odds: {priorOdds.toFixed(4)}</div>
       {trail.map((t, i) => (
-        <div key={i} style={{ padding: '3px 0', borderBottom: i < trail.length - 1 ? '1px solid #1a1a2e' : 'none' }}>
-          <div style={{ fontSize: 7, color: '#c9d1d9' }}>
-            <span style={{ color: t.direction === '+' ? '#ef4444' : '#4ade80' }}>[{t.direction}]</span> {t.evidence}
+        <div key={i} style={{ padding: '4px 0', borderBottom: i < trail.length - 1 ? '1px solid #1a1a2e' : 'none' }}>
+          <div style={{ fontSize: 10, color: '#c9d1d9', lineHeight: 1.5 }}>
+            <span style={{ color: t.direction === '+' ? '#ef4444' : '#4ade80', fontWeight: 700 }}>[{t.direction}]</span> {t.evidence}
           </div>
-          <div style={{ fontSize: 6, color: '#6b7280', marginTop: 1 }}>{t.classification} · {t.source} · LR: {t.likelihoodRatio}x</div>
-          <div style={{ fontSize: 6, color: '#4b5563' }}>{t.reasoning}</div>
-          <div style={{ fontSize: 6, color: '#374151' }}>Odds: {t.priorOdds} → {t.posteriorOdds}</div>
+          <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>{t.classification} · {t.source} · LR: {t.likelihoodRatio}x</div>
+          <div style={{ fontSize: 9, color: '#4b5563', lineHeight: 1.4 }}>{t.reasoning}</div>
+          <div style={{ fontSize: 9, color: '#374151' }}>Odds: {t.priorOdds} → {t.posteriorOdds}</div>
         </div>
       ))}
-      <div style={{ fontSize: 7, color: '#a78bfa', marginTop: 4, fontWeight: 700 }}>
+      <div style={{ fontSize: 11, color: '#a78bfa', marginTop: 6, fontWeight: 700 }}>
         Final posterior: {posterior}%
       </div>
     </div>
