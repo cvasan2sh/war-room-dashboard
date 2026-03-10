@@ -29,13 +29,28 @@ function countdown(lastRefresh: string | null): string {
   return `${Math.floor(diff / 3600000)}h ${Math.floor((diff % 3600000) / 60000)}m`;
 }
 
+// --- Color palette (WCAG AA contrast on #080c14) ---
+const C = {
+  primary: '#e6edf3',     // white-ish — main text (13:1)
+  secondary: '#b0b8c4',   // light gray — body text (8:1)
+  tertiary: '#8b949e',    // mid gray — labels, meta (5.5:1)
+  muted: '#6e7681',       // dim gray — timestamps, hints (4:1)
+  faint: '#484f58',       // subtle — dividers in text (2.5:1 — decorative only)
+  green: '#4ade80',
+  red: '#ef4444',
+  yellow: '#eab308',
+  purple: '#a78bfa',
+  cyan: '#06b6d4',
+  orange: '#f97316',
+};
+
 function dc(val: number): string {
-  return val > 0 ? '#4ade80' : val < 0 ? '#ef4444' : '#6b7280';
+  return val > 0 ? C.green : val < 0 ? C.red : C.tertiary;
 }
 
 function fcBorder(type: string): string {
-  const m: Record<string, string> = { EVIDENCE: '#4ade80', MARKET: '#06b6d4', ANALYSIS: '#a78bfa', ACTOR_UPDATE: '#eab308', SYSTEM: '#374151' };
-  return m[type] || '#374151';
+  const m: Record<string, string> = { EVIDENCE: C.green, MARKET: C.cyan, ANALYSIS: C.purple, ACTOR_UPDATE: C.yellow, SYSTEM: C.muted };
+  return m[type] || C.muted;
 }
 
 export default function WarRoomDashboard() {
@@ -160,8 +175,8 @@ export default function WarRoomDashboard() {
         flexWrap: 'wrap', gap: 10, position: 'sticky', top: 0, background: '#080c14', zIndex: 50,
       }}>
         <div style={{ minWidth: 200 }}>
-          <div style={{ color: '#4ade80', fontSize: 16, letterSpacing: 3, fontWeight: 700 }}>◆ WAR ROOM</div>
-          <div style={{ color: '#6b7280', fontSize: 11, marginTop: 3 }}>
+          <div style={{ color: C.green, fontSize: 16, letterSpacing: 3, fontWeight: 700 }}>◆ WAR ROOM</div>
+          <div style={{ color: C.tertiary, fontSize: 11, marginTop: 3 }}>
             Day {warDay()} · Next: {countdown(state.lastAiRefresh)}
             {state.lastAiRefresh && ` · Last: ${timeAgo(state.lastAiRefresh)}`}
           </div>
@@ -178,8 +193,8 @@ export default function WarRoomDashboard() {
               background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 4,
               padding: '5px 12px', textAlign: 'center', minWidth: 80,
             }}>
-              <div style={{ fontSize: 10, color: '#6b7280', letterSpacing: 2 }}>{t.l}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: t.v ? '#e6edf3' : '#374151' }}>
+              <div style={{ fontSize: 10, color: C.tertiary, letterSpacing: 2 }}>{t.l}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: t.v ? C.primary : C.muted }}>
                 {t.v ? t.f(t.v) : '—'}
               </div>
               {t.c != null && t.c !== 0 && (
@@ -191,18 +206,18 @@ export default function WarRoomDashboard() {
           ))}
 
           <div style={{
-            background: '#112a1a', border: '1px solid #4ade80', borderRadius: 4,
+            background: '#112a1a', border: `1px solid ${C.green}`, borderRadius: 4,
             padding: '5px 12px', textAlign: 'center',
           }}>
-            <div style={{ fontSize: 10, color: '#6b7280', letterSpacing: 2 }}>P-WEIGHT</div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#4ade80' }}>{pw.toLocaleString()}</div>
+            <div style={{ fontSize: 10, color: C.tertiary, letterSpacing: 2 }}>P-WEIGHT</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.green }}>{pw.toLocaleString()}</div>
             {spot > 0 && <div style={{ fontSize: 11, color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap.toFixed(0)}</div>}
           </div>
 
           <button onClick={triggerAiRefresh} disabled={aiLoading} style={{
             background: aiLoading ? '#0d1117' : '#112a1a',
-            border: `1px solid ${aiLoading ? '#374151' : '#a78bfa'}`,
-            color: aiLoading ? '#6b7280' : '#a78bfa',
+            border: `1px solid ${aiLoading ? C.muted : C.purple}`,
+            color: aiLoading ? C.tertiary : C.purple,
             padding: '8px 16px', borderRadius: 4, cursor: aiLoading ? 'default' : 'pointer',
             fontSize: 12, letterSpacing: 2, fontFamily: 'inherit', fontWeight: 600,
           }}>
@@ -218,8 +233,8 @@ export default function WarRoomDashboard() {
         {(['feed', 'scenarios', 'actors'] as const).map(p => (
           <button key={p} onClick={() => setMobilePanel(p)} style={{
             flex: 1, background: mobilePanel === p ? '#112a1a' : 'transparent',
-            border: `1px solid ${mobilePanel === p ? '#4ade80' : '#1e3a2f'}`,
-            color: mobilePanel === p ? '#4ade80' : '#6b7280',
+            border: `1px solid ${mobilePanel === p ? C.green : '#1e3a2f'}`,
+            color: mobilePanel === p ? C.green : C.tertiary,
             padding: '8px', borderRadius: 4, fontSize: 12, letterSpacing: 1,
             textTransform: 'uppercase', fontFamily: 'inherit', cursor: 'pointer', fontWeight: 600,
           }}>{p}</button>
@@ -236,7 +251,7 @@ export default function WarRoomDashboard() {
         <div className="panel-left" style={{
           borderRight: '1px solid #1e3a2f', overflowY: 'auto', padding: '12px 10px',
         }}>
-          <div style={{ fontSize: 10, color: '#6b7280', letterSpacing: 2, marginBottom: 10, fontWeight: 600 }}>ACTORS ({state.actors.length})</div>
+          <div style={{ fontSize: 10, color: C.tertiary, letterSpacing: 2, marginBottom: 10, fontWeight: 600 }}>ACTORS ({state.actors.length})</div>
           {state.actors.map(a => (
             <div key={a.id} style={{
               background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 5,
@@ -248,21 +263,21 @@ export default function WarRoomDashboard() {
                   {a.status}
                 </span>
               </div>
-              <div style={{ fontSize: 12, color: '#e6edf3', fontWeight: 700 }}>{a.name}</div>
+              <div style={{ fontSize: 12, color: C.primary, fontWeight: 700 }}>{a.name}</div>
               {a.latestDevelopment ? (
-                <div style={{ fontSize: 10, color: '#eab308', marginTop: 4, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 10, color: C.yellow, marginTop: 4, lineHeight: 1.5 }}>
                   {a.latestDevelopment}
-                  <span style={{ color: '#4b5563' }}> — {a.latestDevSource}</span>
+                  <span style={{ color: C.muted }}> — {a.latestDevSource}</span>
                 </div>
               ) : (
-                <div style={{ fontSize: 10, color: '#4b5563', marginTop: 4, lineHeight: 1.4 }}>{a.objective.slice(0, 60)}...</div>
+                <div style={{ fontSize: 10, color: C.tertiary, marginTop: 4, lineHeight: 1.4 }}>{a.objective.slice(0, 60)}...</div>
               )}
             </div>
           ))}
 
           <button onClick={() => setShowNotes(!showNotes)} style={{
             width: '100%', marginTop: 10, background: 'transparent',
-            border: '1px solid #1e3a2f', color: '#6b7280', padding: '6px',
+            border: '1px solid #1e3a2f', color: C.tertiary, padding: '6px',
             borderRadius: 4, fontSize: 11, letterSpacing: 2, cursor: 'pointer', fontFamily: 'inherit',
           }}>
             {showNotes ? '▼ NOTES' : '▶ NOTES'}
@@ -273,7 +288,7 @@ export default function WarRoomDashboard() {
               style={{
                 width: '100%', minHeight: 120, marginTop: 6, background: '#0d1117',
                 border: '1px solid #1e3a2f', borderRadius: 4, padding: 8,
-                color: '#c9d1d9', fontSize: 11, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical',
+                color: C.secondary, fontSize: 11, fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical',
               }} />
           )}
         </div>
@@ -285,13 +300,13 @@ export default function WarRoomDashboard() {
           {/* Delta card */}
           {newCards.length > 0 && lastVisitTime && (
             <div style={{
-              background: '#0d1020', border: '1px solid #a78bfa', borderRadius: 6,
+              background: '#0d1020', border: `1px solid ${C.purple}`, borderRadius: 6,
               padding: '10px 14px', marginBottom: 14,
             }}>
-              <div style={{ fontSize: 10, color: '#a78bfa', letterSpacing: 2, marginBottom: 5, fontWeight: 600 }}>
+              <div style={{ fontSize: 10, color: C.purple, letterSpacing: 2, marginBottom: 5, fontWeight: 600 }}>
                 SINCE LAST VISIT ({timeAgo(lastVisitTime.toISOString())})
               </div>
-              <div style={{ fontSize: 13, color: '#e6edf3', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: C.primary, lineHeight: 1.5 }}>
                 {newCards.length} update{newCards.length !== 1 ? 's' : ''}.
                 P-weighted Nifty: {pw.toLocaleString()}.
                 {marketData && ` Oil $${marketData.oil}. VIX ${marketData.vix?.toFixed(1) || '?'}.`}
@@ -299,16 +314,16 @@ export default function WarRoomDashboard() {
             </div>
           )}
 
-          <div style={{ fontSize: 11, color: '#6b7280', letterSpacing: 2, marginBottom: 12, fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: C.tertiary, letterSpacing: 2, marginBottom: 12, fontWeight: 600 }}>
             INTELLIGENCE FEED
-            <span style={{ color: '#4b5563', marginLeft: 8, fontWeight: 400 }}>{state.feedCards.length} entries</span>
+            <span style={{ color: C.muted, marginLeft: 8, fontWeight: 400 }}>{state.feedCards.length} entries</span>
           </div>
 
           {state.feedCards.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#4b5563' }}>
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: C.tertiary }}>
               <div style={{ fontSize: 28, marginBottom: 10 }}>◇</div>
               <div style={{ fontSize: 14 }}>No intelligence yet.</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>Click ⚡ REFRESH to run the first analysis.</div>
+              <div style={{ fontSize: 12, marginTop: 4, color: C.secondary }}>Click ⚡ REFRESH to run the first analysis.</div>
             </div>
           )}
 
@@ -324,43 +339,43 @@ export default function WarRoomDashboard() {
                   {card.classification && (
                     <span style={{
                       fontSize: 9, letterSpacing: 1, padding: '1px 6px',
-                      border: `1px solid ${card.classification === 'FACT' ? '#4ade80' : card.classification === 'REPORTED' ? '#eab308' : '#a78bfa'}`,
-                      color: card.classification === 'FACT' ? '#4ade80' : card.classification === 'REPORTED' ? '#eab308' : '#a78bfa',
+                      border: `1px solid ${card.classification === 'FACT' ? C.green : card.classification === 'REPORTED' ? C.yellow : C.purple}`,
+                      color: card.classification === 'FACT' ? C.green : card.classification === 'REPORTED' ? C.yellow : C.purple,
                       borderRadius: 3, fontWeight: 600,
                     }}>{card.classification}</span>
                   )}
                 </div>
-                <span style={{ fontSize: 10, color: '#4b5563' }}>{timeAgo(card.timestamp)}</span>
+                <span style={{ fontSize: 10, color: C.muted }}>{timeAgo(card.timestamp)}</span>
               </div>
 
-              <div style={{ fontSize: 14, color: '#e6edf3', fontWeight: 600, marginBottom: 5, lineHeight: 1.5 }}>{card.title}</div>
-              <div style={{ fontSize: 12, color: '#9ca3af', lineHeight: 1.6, marginBottom: 6 }}>{card.body}</div>
+              <div style={{ fontSize: 14, color: C.primary, fontWeight: 600, marginBottom: 5, lineHeight: 1.5 }}>{card.title}</div>
+              <div style={{ fontSize: 12, color: C.secondary, lineHeight: 1.6, marginBottom: 6 }}>{card.body}</div>
 
               {card.source && (
-                <div style={{ fontSize: 10, color: '#4b5563' }}>
+                <div style={{ fontSize: 10, color: C.muted }}>
                   Source: {card.source}
-                  {card.sourceUrl && <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80', marginLeft: 4 }}>↗</a>}
+                  {card.sourceUrl && <a href={card.sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: C.green, marginLeft: 4 }}>↗</a>}
                 </div>
               )}
 
               {card.scenarioImpact && card.scenarioImpact.posterior > 0 && (
                 <div style={{ marginTop: 8, padding: '8px 10px', background: '#080c14', borderRadius: 4, border: '1px solid #1e3a2f' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: '#c9d1d9' }}>{card.scenarioImpact.scenario}</span>
+                    <span style={{ fontSize: 11, color: C.secondary }}>{card.scenarioImpact.scenario}</span>
                     <span style={{ fontSize: 13, fontWeight: 700 }}>
-                      <span style={{ color: '#6b7280' }}>{card.scenarioImpact.prior}%</span>
-                      <span style={{ color: '#4b5563' }}> → </span>
-                      <span style={{ color: card.scenarioImpact.posterior > card.scenarioImpact.prior ? '#ef4444' : '#4ade80' }}>
+                      <span style={{ color: C.tertiary }}>{card.scenarioImpact.prior}%</span>
+                      <span style={{ color: C.muted }}> → </span>
+                      <span style={{ color: card.scenarioImpact.posterior > card.scenarioImpact.prior ? C.red : C.green }}>
                         {card.scenarioImpact.posterior}%
                       </span>
                     </span>
                   </div>
-                  <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>LR: {card.scenarioImpact.likelihoodRatio}x</div>
+                  <div style={{ fontSize: 10, color: C.tertiary, marginTop: 2 }}>LR: {card.scenarioImpact.likelihoodRatio}x</div>
 
                   {card.bayesianTrail && card.bayesianTrail.length > 0 && (
                     <>
                       <button onClick={() => toggleMath(card.id)} style={{
-                        background: 'transparent', border: 'none', color: '#a78bfa',
+                        background: 'transparent', border: 'none', color: C.purple,
                         fontSize: 10, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', letterSpacing: 1, fontWeight: 600,
                       }}>
                         {expandedMath.has(card.id) ? '▼ HIDE MATH' : '▶ SHOW MATH'}
@@ -379,8 +394,8 @@ export default function WarRoomDashboard() {
         {/* ─── RIGHT: Scenario Engine ─── */}
         <div className="panel-right" style={{ overflowY: 'auto', padding: '12px 10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <div style={{ fontSize: 11, color: '#6b7280', letterSpacing: 2, fontWeight: 600 }}>SCENARIO ENGINE</div>
-            <div style={{ fontSize: 14, color: '#4ade80', fontWeight: 700 }}>{pw.toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: C.tertiary, letterSpacing: 2, fontWeight: 600 }}>SCENARIO ENGINE</div>
+            <div style={{ fontSize: 14, color: C.green, fontWeight: 700 }}>{pw.toLocaleString()}</div>
           </div>
 
           {spot > 0 && (
@@ -388,29 +403,29 @@ export default function WarRoomDashboard() {
               background: '#112a1a', border: '1px solid #1e3a2f', borderRadius: 4,
               padding: '7px 10px', marginBottom: 10, textAlign: 'center', fontSize: 11,
             }}>
-              <span style={{ color: '#6b7280' }}>SPOT {spot.toLocaleString()}</span>
-              <span style={{ color: '#374151' }}> · </span>
-              <span style={{ color: '#4ade80' }}>TARGET {pw.toLocaleString()}</span>
-              <span style={{ color: '#374151' }}> · </span>
+              <span style={{ color: C.tertiary }}>SPOT {spot.toLocaleString()}</span>
+              <span style={{ color: C.faint }}> · </span>
+              <span style={{ color: C.green }}>TARGET {pw.toLocaleString()}</span>
+              <span style={{ color: C.faint }}> · </span>
               <span style={{ color: dc(gap) }}>GAP {gap > 0 ? '+' : ''}{gap.toFixed(0)} ({gapPct}%)</span>
             </div>
           )}
 
-          <div style={{ fontSize: 9, color: '#4b5563', letterSpacing: 1, marginBottom: 8 }}>CLICK % TO EDIT · AUTO-REDISTRIBUTES TO 100</div>
+          <div style={{ fontSize: 9, color: C.muted, letterSpacing: 1, marginBottom: 8 }}>CLICK % TO EDIT · AUTO-REDISTRIBUTES TO 100</div>
 
           {state.scenarios.map((s, i) => {
-            const bc = s.prob > 30 ? '#4ade80' : s.prob > 15 ? '#eab308' : s.prob > 7 ? '#f97316' : '#ef4444';
+            const bc = s.prob > 30 ? C.green : s.prob > 15 ? C.yellow : s.prob > 7 ? C.orange : C.red;
             return (
               <div key={i} style={{ background: '#0d1117', border: '1px solid #1e3a2f', borderRadius: 5, padding: '9px 11px', marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <div style={{ fontSize: 12, color: '#e6edf3', fontWeight: 600, flex: 1 }}>{s.scenario}</div>
+                  <div style={{ fontSize: 12, color: C.primary, fontWeight: 600, flex: 1 }}>{s.scenario}</div>
                   {editingScenario === i ? (
                     <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
                       <input value={editInput} onChange={e => setEditInput(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') handleProbEdit(i); if (e.key === 'Escape') setEditingScenario(null); }}
-                        autoFocus style={{ width: 42, background: '#080c14', border: '1px solid #4ade80', color: '#4ade80', borderRadius: 3, padding: '2px 4px', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }}
+                        autoFocus style={{ width: 42, background: '#080c14', border: `1px solid ${C.green}`, color: C.green, borderRadius: 3, padding: '2px 4px', fontSize: 13, fontFamily: 'inherit', textAlign: 'right' }}
                       />
-                      <button onClick={() => handleProbEdit(i)} style={{ background: '#112a1a', border: '1px solid #4ade80', color: '#4ade80', borderRadius: 3, padding: '2px 7px', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>✓</button>
+                      <button onClick={() => handleProbEdit(i)} style={{ background: '#112a1a', border: `1px solid ${C.green}`, color: C.green, borderRadius: 3, padding: '2px 7px', cursor: 'pointer', fontSize: 11, fontFamily: 'inherit' }}>✓</button>
                     </div>
                   ) : (
                     <span onClick={() => { setEditingScenario(i); setEditInput(String(s.prob)); }}
@@ -425,25 +440,25 @@ export default function WarRoomDashboard() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10 }}>
-                  <span style={{ color: '#a78bfa' }}>Nifty {s.range}</span>
-                  <span style={{ color: '#4b5563' }}>{s.ivEstimate}</span>
+                  <span style={{ color: C.purple }}>Nifty {s.range}</span>
+                  <span style={{ color: C.muted }}>{s.ivEstimate}</span>
                 </div>
-                <div style={{ fontSize: 10, color: '#4b5563', marginTop: 2, lineHeight: 1.4 }}>{s.driver}</div>
+                <div style={{ fontSize: 10, color: C.tertiary, marginTop: 2, lineHeight: 1.4 }}>{s.driver}</div>
 
                 {s.analogues.length > 0 && (
                   <>
                     <button onClick={() => setExpandedAnalogue(expandedAnalogue === i ? null : i)}
-                      style={{ background: 'transparent', border: 'none', color: '#06b6d4', fontSize: 10, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', letterSpacing: 1, fontWeight: 600 }}>
+                      style={{ background: 'transparent', border: 'none', color: C.cyan, fontSize: 10, cursor: 'pointer', padding: '4px 0', fontFamily: 'inherit', letterSpacing: 1, fontWeight: 600 }}>
                       {expandedAnalogue === i ? '▼ PRECEDENT' : '▶ PRECEDENT'}
                     </button>
                     {expandedAnalogue === i && s.analogues.map((a, ai) => (
                       <div key={ai} style={{ background: '#080c14', borderRadius: 4, padding: '7px 9px', border: '1px solid #0e3347', marginTop: 3 }}>
-                        <div style={{ fontSize: 11, color: '#06b6d4', marginBottom: 3, fontWeight: 600 }}>{a.event} ({a.date})</div>
-                        <div style={{ fontSize: 10, color: '#9ca3af', lineHeight: 1.6 }}>
+                        <div style={{ fontSize: 11, color: C.cyan, marginBottom: 3, fontWeight: 600 }}>{a.event} ({a.date})</div>
+                        <div style={{ fontSize: 10, color: C.secondary, lineHeight: 1.6 }}>
                           Oil: {a.oilMove} · Nifty: {a.niftyMove}<br />
                           VIX: {a.vixMove} · Recovery: {a.recoveryDays} sessions
                         </div>
-                        <div style={{ fontSize: 9, color: '#4b5563', marginTop: 2 }}>Source: {a.source}</div>
+                        <div style={{ fontSize: 9, color: C.muted, marginTop: 2 }}>Source: {a.source}</div>
                       </div>
                     ))}
                   </>
@@ -453,7 +468,7 @@ export default function WarRoomDashboard() {
           })}
 
           <div style={{ marginTop: 14, padding: '8px 10px', background: '#0a0f1a', border: '1px solid #1e3a2f', borderRadius: 4 }}>
-            <div style={{ fontSize: 9, color: '#4b5563', lineHeight: 1.6 }}>
+            <div style={{ fontSize: 9, color: C.muted, lineHeight: 1.6 }}>
               Factual intelligence only. Not investment advice. Probabilities are Bayesian
               estimates with auditable math. Sources linked. Not SEBI registered.
             </div>
@@ -487,15 +502,15 @@ function BayesianMathView({ trail, prior, posterior }: { trail: BayesianTrailIte
   return (
     <div style={{ marginTop: 6, padding: '8px', background: '#060a12', borderRadius: 4, border: '1px solid #1a1a2e' }}>
       <div style={{ fontSize: 10, color: '#a78bfa', letterSpacing: 1, marginBottom: 5, fontWeight: 600 }}>BAYESIAN AUDIT TRAIL</div>
-      <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 6 }}>Prior: {prior}% → Odds: {priorOdds.toFixed(4)}</div>
+      <div style={{ fontSize: 10, color: '#8b949e', marginBottom: 6 }}>Prior: {prior}% → Odds: {priorOdds.toFixed(4)}</div>
       {trail.map((t, i) => (
         <div key={i} style={{ padding: '4px 0', borderBottom: i < trail.length - 1 ? '1px solid #1a1a2e' : 'none' }}>
-          <div style={{ fontSize: 10, color: '#c9d1d9', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 10, color: '#b0b8c4', lineHeight: 1.5 }}>
             <span style={{ color: t.direction === '+' ? '#ef4444' : '#4ade80', fontWeight: 700 }}>[{t.direction}]</span> {t.evidence}
           </div>
-          <div style={{ fontSize: 9, color: '#6b7280', marginTop: 2 }}>{t.classification} · {t.source} · LR: {t.likelihoodRatio}x</div>
-          <div style={{ fontSize: 9, color: '#4b5563', lineHeight: 1.4 }}>{t.reasoning}</div>
-          <div style={{ fontSize: 9, color: '#374151' }}>Odds: {t.priorOdds} → {t.posteriorOdds}</div>
+          <div style={{ fontSize: 9, color: '#8b949e', marginTop: 2 }}>{t.classification} · {t.source} · LR: {t.likelihoodRatio}x</div>
+          <div style={{ fontSize: 9, color: '#8b949e', lineHeight: 1.4 }}>{t.reasoning}</div>
+          <div style={{ fontSize: 9, color: '#6e7681' }}>Odds: {t.priorOdds} → {t.posteriorOdds}</div>
         </div>
       ))}
       <div style={{ fontSize: 11, color: '#a78bfa', marginTop: 6, fontWeight: 700 }}>

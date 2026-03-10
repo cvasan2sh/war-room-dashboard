@@ -9,14 +9,34 @@ body {
   padding: 0;
   font-family: 'IBM Plex Mono', 'Courier New', monospace;
   background: #080c14;
-  color: #c9d1d9;
+  color: #b0b8c4;
+  font-size: 13px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar { width: 6px; }
+/* Prevent zoom on input focus on iOS */
+input, textarea, select {
+  font-size: 16px;
+}
+
+@media (min-width: 900px) {
+  input, textarea, select {
+    font-size: inherit;
+  }
+}
+
+::-webkit-scrollbar { width: 7px; }
 ::-webkit-scrollbar-track { background: #080c14; }
-::-webkit-scrollbar-thumb { background: #1e3a2f; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #2d5a45; }
+::-webkit-scrollbar-thumb { background: #2d5a45; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3d7a5f; }
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2d5a45 #080c14;
+}
 
 @keyframes slide-in {
   from { opacity: 0; transform: translateY(-8px); }
@@ -25,4 +45,11 @@ body {
 @keyframes pulse-slow {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+
+/* Better tap targets on mobile */
+@media (max-width: 900px) {
+  button {
+    min-height: 36px;
+  }
 }
