@@ -1,0 +1,95 @@
+{
+  "cpi_result": {
+    "cpi": 66,
+    "zone": {
+      "name": "DIPLOMATIC",
+      "color": "yellow",
+      "emoji": "\ud83d\udfe1"
+    },
+    "total_confidence": 0.65,
+    "signal_details": {
+      "hormuz": {
+        "score": 80,
+        "confidence": 1.0,
+        "effective_weight": 0.35
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0,
+        "effective_weight": 0.0
+      },
+      "bonbast": {
+        "score": 50,
+        "confidence": 1.0,
+        "effective_weight": 0.3
+      }
+    },
+    "alerts": [],
+    "scenario_shifts": {
+      "ceasefire": 5,
+      "attrition": 0,
+      "hormuz_closure": 5
+    },
+    "override_alerts": [
+      {
+        "signal": "flightradar",
+        "interpretation": "Gulf airspace CLOSED \u2014 zero flights detected",
+        "severity": "critical"
+      },
+      {
+        "signal": "nasa_firms",
+        "interpretation": "Thermal at Strait_Hormuz (1) \u2014 within industrial baseline (normal) [within industrial baseline]",
+        "severity": "info"
+      }
+    ],
+    "timestamp": "2026-03-25T08:39:25.840682+00:00"
+  },
+  "signals": {
+    "hormuz": {
+      "score": 80,
+      "confidence": 1.0,
+      "interpretation": "13 vessels transiting \u2014 normal commercial flow",
+      "alert": false,
+      "type": "weighted",
+      "count": 13
+    },
+    "bonbast": {
+      "score": 50,
+      "confidence": 1.0,
+      "interpretation": "Rial stable (+0.0%) at 159,950 \u2014 no significant move",
+      "alert": false,
+      "type": "weighted",
+      "rate": 159950,
+      "trend_pct": 0.0
+    },
+    "polymarket": {
+      "score": 50,
+      "confidence": 0.0,
+      "interpretation": "NO DATA: API unreachable \u2014 TCP connect timeout (firewall or network issue?)",
+      "alert": false,
+      "type": "weighted",
+      "price": null,
+      "move_2h": null
+    },
+    "flightradar": {
+      "score": 50,
+      "confidence": 1.0,
+      "interpretation": "Gulf airspace CLOSED \u2014 zero flights detected",
+      "alert": true,
+      "type": "override",
+      "flight_count": 0
+    },
+    "nasa_firms": {
+      "score": 50,
+      "confidence": 1.0,
+      "interpretation": "Thermal at Strait_Hormuz (1) \u2014 within industrial baseline (normal)",
+      "alert": true,
+      "type": "override",
+      "total_hits": 143,
+      "critical_hits": {
+        "Strait_Hormuz": 1
+      }
+    }
+  },
+  "timestamp": "2026-03-25T08:39:27.112342+00:00"
+}

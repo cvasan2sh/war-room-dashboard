@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { DashboardState, FeedCard, MarketData, NiftyScenario, BayesianTrailItem } from '@/lib/types';
-import { createInitialState, weightedNifty, WAR_START_DATE } from '@/lib/initial-data';
+import { createInitialState, weightedNifty, weightedOil, weightedInr, WAR_START_DATE } from '@/lib/initial-data';
 import { manualProbUpdate } from '@/lib/bayesian';
 
 const STORAGE_KEY = 'war-room-v2';
@@ -60,7 +60,10 @@ export default function WarRoomDashboard() {
   const [expandedScenario, setExpandedScenario] = useState<number | null>(null);
   const [showPlayers, setShowPlayers] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const [activeTab, setActiveTab] = useState<'updates' | 'scenarios' | 'simulator'>('scenarios');
+  const [activeTab, setActiveTab] = useState<'updates' | 'scenarios' | 'simulator' | 'cpi'>('scenarios');
+
+  // CPI state
+  const [cpiData, setCpiData] = useState<{ latest: any; history: any[]; hasData: boolean } | null>(null);
 
   // Position simulator state
   const [positions, setPositions] = useState<Array<{ strike: number; type: 'CE' | 'PE'; lots: number; premium: number }>>([]);
@@ -98,6 +101,19 @@ export default function WarRoomDashboard() {
     };
     f();
     const iv = setInterval(f, MARKET_POLL_INTERVAL);
+    return () => clearInterval(iv);
+  }, []);
+
+  // Poll CPI data from Python backend
+  useEffect(() => {
+    const fetchCpi = async () => {
+      try {
+        const res = await fetch('/api/cpi-data');
+        if (res.ok) { const d = await res.json(); setCpiData(d); }
+      } catch {}
+    };
+    fetchCpi();
+    const iv = setInterval(fetchCpi, 30000); // every 30s
     return () => clearInterval(iv);
   }, []);
 
@@ -209,9 +225,17 @@ export default function WarRoomDashboard() {
             </div>
           ))}
           <div className="wr-market-item highlight">
-            <span className="wr-market-label" title="Probability-weighted Nifty target across all scenarios">AI Target</span>
+            <span className="wr-market-label" title="Probability-weighted Nifty target across all scenarios">AI Nifty</span>
             <span className="wr-market-val accent">{pw.toLocaleString()}</span>
             {spot > 0 && <span className={`wr-market-chg ${gap >= 0 ? 'up' : 'down'}`}>Gap: {gap > 0 ? '+' : ''}{gap.toFixed(0)} ({gapPct.toFixed(1)}%)</span>}
+          </div>
+          <div className="wr-market-item highlight">
+            <span className="wr-market-label" title="Probability-weighted Oil target">AI Oil</span>
+            <span className="wr-market-val accent">${weightedOil(state.scenarios)}</span>
+          </div>
+          <div className="wr-market-item highlight">
+            <span className="wr-market-label" title="Probability-weighted INR target">AI INR</span>
+            <span className="wr-market-val accent">{weightedInr(state.scenarios)}</span>
           </div>
         </div>
       </header>
@@ -228,6 +252,7 @@ export default function WarRoomDashboard() {
       {/* ═══ TAB NAVIGATION ═══ */}
       <nav className="wr-tabs">
         {[
+          { id: 'cpi' as const, label: `CPI ${cpiData?.latest?.cpi_result?.zone?.emoji || '⚡'}`, count: cpiData?.latest?.cpi_result?.cpi || undefined },
           { id: 'scenarios' as const, label: 'Scenarios & Impact', count: state.scenarios.length },
           { id: 'updates' as const, label: 'Live Updates', count: state.feedCards.length },
           { id: 'simulator' as const, label: 'Position Simulator', count: positions.length || undefined },
@@ -248,6 +273,180 @@ export default function WarRoomDashboard() {
 
       {/* ═══ MAIN CONTENT ═══ */}
       <main className="wr-main">
+
+        {/* ─── CPI TAB ─── */}
+        {activeTab === 'cpi' && (
+          <div className="wr-cpi-panel">
+            {!cpiData?.hasData ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#8b949e' }}>
+                <p style={{ fontSize: '16px', marginBottom: '12px' }}>CPI backend not running yet.</p>
+                <p style={{ fontSize: '13px' }}>Run <code style={{ background: '#1c2333', padding: '2px 8px', borderRadius: '4px' }}>cd cpi &amp;&amp; python scheduler.py</code> to start collecting signals.</p>
+                <p style={{ fontSize: '13px', marginTop: '8px' }}>Once running, CPI data will appear here automatically.</p>
+              </div>
+            ) : (() => {
+              const cpi = cpiData.latest?.cpi_result || {};
+              const signals = cpiData.latest?.signals || {};
+              const history = cpiData.history || [];
+              const score = cpi.cpi;
+              const isInsufficient = score === null || score === undefined;
+              const displayScore = isInsufficient ? '—' : score;
+              const zone = cpi.zone || { name: 'LOADING', emoji: '⚡', color: '#8b949e' };
+              const totalConf = cpi.total_confidence ?? 0;
+              const overrideAlerts = cpi.override_alerts || [];
+              const scenarioShifts = cpi.scenario_shifts || {};
+
+              const cpiColor = isInsufficient ? '#5a6a8a' : score >= 86 ? '#00ff88' : score >= 71 ? '#44ff88' : score >= 51 ? '#ffdd44' : score >= 31 ? '#ff9944' : '#ff4444';
+              const zoneBg = isInsufficient ? '#111827' : score >= 86 ? '#00331a' : score >= 71 ? '#0d2e1a' : score >= 51 ? '#2e2800' : score >= 31 ? '#2e1400' : '#2e0a0a';
+
+              const signalLabels: Record<string, string> = {
+                hormuz: '⚓ Hormuz Vessels', polymarket: '📈 Ceasefire Market', bonbast: '💱 Rial Rate',
+              };
+              const overrideLabels: Record<string, string> = {
+                flightradar: '✈️ Gulf Airspace', nasa_firms: '🔥 Satellite Thermal',
+              };
+              const signalOrder = ['hormuz', 'polymarket', 'bonbast'];
+              const getBarColor = (s: number) => s >= 70 ? '#44ff88' : s >= 50 ? '#ffdd44' : s >= 30 ? '#ff9944' : '#ff4444';
+              const confColor = (c: number) => c >= 0.8 ? '#44ff88' : c >= 0.5 ? '#ffdd44' : c > 0 ? '#ff9944' : '#ff4444';
+
+              return (
+                <>
+                  {/* CPI Score Hero */}
+                  <div style={{ textAlign: 'center', padding: '24px 0 16px', borderBottom: '1px solid #1c2333' }}>
+                    <div style={{ fontSize: '11px', color: '#8b949e', letterSpacing: '2px', marginBottom: '8px' }}>CEASEFIRE PROBABILITY INDEX</div>
+                    <div style={{ fontSize: '72px', fontWeight: 900, color: cpiColor, lineHeight: 1 }}>{displayScore}</div>
+                    <div style={{
+                      display: 'inline-block', padding: '4px 16px', borderRadius: '20px',
+                      fontSize: '12px', letterSpacing: '1px', marginTop: '10px',
+                      background: zoneBg, color: cpiColor, fontWeight: 600,
+                    }}>
+                      {zone.emoji} {zone.name}
+                    </div>
+                    {/* Confidence indicator */}
+                    <div style={{ fontSize: '12px', marginTop: '8px', color: confColor(totalConf) }}>
+                      Signal confidence: {Math.round(totalConf * 100)}%
+                      {totalConf < 0.5 && <span style={{ color: '#ff9944', marginLeft: '8px' }}>⚠️ Low — some signals have no data</span>}
+                    </div>
+                    {/* Gauge bar */}
+                    {!isInsufficient && (
+                      <div style={{ width: '80%', maxWidth: '400px', height: '8px', background: '#1c2333', borderRadius: '4px', margin: '14px auto 0', overflow: 'hidden' }}>
+                        <div style={{ width: `${score}%`, height: '100%', background: cpiColor, borderRadius: '4px', transition: 'width 0.8s ease' }} />
+                      </div>
+                    )}
+                    {/* Mini sparkline */}
+                    {history.length > 1 && (
+                      <div style={{ display: 'flex', gap: '2px', alignItems: 'flex-end', height: '32px', margin: '12px auto 0', maxWidth: '400px' }}>
+                        {history.slice(-28).map((h: any, i: number) => {
+                          const hCpi = h.cpi ?? 0;
+                          if (hCpi === 0) return <div key={i} style={{ flex: 1, height: '4px', background: '#333', borderRadius: '1px' }} title="No data" />;
+                          const maxCpi = Math.max(...history.slice(-28).map((x: any) => x.cpi ?? 0).filter(Boolean), 1);
+                          const pctH = Math.max(4, (hCpi / maxCpi) * 100);
+                          const hColor = hCpi >= 86 ? '#00ff88' : hCpi >= 71 ? '#44ff88' : hCpi >= 51 ? '#ffdd44' : hCpi >= 31 ? '#ff9944' : '#ff4444';
+                          return <div key={i} style={{ flex: 1, height: `${pctH}%`, background: hColor, opacity: 0.7, borderRadius: '1px' }} title={`CPI: ${hCpi}`} />;
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Weighted Signals */}
+                  <div style={{ padding: '16px 0', borderBottom: '1px solid #1c2333' }}>
+                    <div style={{ fontSize: '11px', color: '#8b949e', letterSpacing: '1px', marginBottom: '10px' }}>WEIGHTED SIGNALS</div>
+                    {signalOrder.map(key => {
+                      const sig = signals[key] || {};
+                      const s = sig.score ?? 50;
+                      const conf = sig.confidence ?? 0;
+                      const interp = sig.interpretation || '';
+                      const noData = interp.startsWith('NO DATA');
+                      const barColor = noData ? '#333' : getBarColor(s);
+                      const weight = key === 'hormuz' ? '35%' : key === 'polymarket' ? '35%' : '30%';
+                      return (
+                        <div key={key} style={{ padding: '8px 0', borderBottom: '1px solid #111827' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', fontSize: '13px' }}>
+                            <span style={{ color: noData ? '#5a6a8a' : '#e6edf3', width: '150px', flexShrink: 0 }}>{signalLabels[key] || key}</span>
+                            <div style={{ width: '100px', height: '4px', background: '#1c2333', borderRadius: '2px', overflow: 'hidden', margin: '0 10px' }}>
+                              <div style={{ width: noData ? '0%' : `${s}%`, height: '100%', background: barColor, borderRadius: '2px', transition: 'width 0.6s' }} />
+                            </div>
+                            <span style={{ fontWeight: 700, width: '36px', textAlign: 'right', color: noData ? '#5a6a8a' : barColor }}>{noData ? '—' : s}</span>
+                            <span style={{ fontSize: '10px', color: confColor(conf), marginLeft: '8px', width: '40px' }}>{noData ? 'NO DATA' : `${Math.round(conf * 100)}%`}</span>
+                            <span style={{ fontSize: '10px', color: '#5a6a8a', marginLeft: '4px', width: '30px' }}>({weight})</span>
+                          </div>
+                          <div style={{ fontSize: '11px', color: noData ? '#ff6666' : '#5a6a8a', marginTop: '3px', paddingLeft: '150px' }}>{interp}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Binary Override Signals */}
+                  <div style={{ padding: '16px 0', borderBottom: '1px solid #1c2333' }}>
+                    <div style={{ fontSize: '11px', color: '#8b949e', letterSpacing: '1px', marginBottom: '10px' }}>OVERRIDE SIGNALS (SMOKE DETECTORS)</div>
+                    {['flightradar', 'nasa_firms'].map(key => {
+                      const sig = signals[key] || {};
+                      const hasAlert = sig.alert === true;
+                      const noData = sig.confidence === 0;
+                      const interp = sig.interpretation || '';
+                      const bgColor = hasAlert ? 'rgba(239, 68, 68, 0.1)' : noData ? 'rgba(90, 106, 138, 0.1)' : 'rgba(68, 255, 136, 0.05)';
+                      const borderColor = hasAlert ? 'rgba(239, 68, 68, 0.3)' : noData ? 'rgba(90, 106, 138, 0.2)' : 'rgba(68, 255, 136, 0.15)';
+                      return (
+                        <div key={key} style={{ padding: '10px 14px', marginBottom: '8px', borderRadius: '8px', background: bgColor, border: `1px solid ${borderColor}` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: hasAlert ? '#ff6666' : noData ? '#5a6a8a' : '#88cc88' }}>
+                              {overrideLabels[key] || key}
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: 700, padding: '2px 10px', borderRadius: '10px',
+                              background: hasAlert ? 'rgba(239,68,68,0.2)' : noData ? 'rgba(90,106,138,0.15)' : 'rgba(68,255,136,0.1)',
+                              color: hasAlert ? '#ff6666' : noData ? '#5a6a8a' : '#88cc88',
+                            }}>
+                              {hasAlert ? '🚨 ALERT' : noData ? '— NO DATA' : '✓ CLEAR'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '11px', color: hasAlert ? '#ff9999' : '#5a6a8a', marginTop: '4px' }}>{interp}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Scenario Probability Shifts */}
+                  {Object.keys(scenarioShifts).length > 0 && (
+                    <div style={{ padding: '16px 0', borderBottom: '1px solid #1c2333' }}>
+                      <div style={{ fontSize: '11px', color: '#8b949e', letterSpacing: '1px', marginBottom: '10px' }}>CPI → SCENARIO SHIFTS (AUTO-BAYESIAN)</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {Object.entries(scenarioShifts).map(([key, shift]) => {
+                          const s = shift as number;
+                          return (
+                            <div key={key} style={{
+                              padding: '6px 12px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+                              background: s > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(68,255,136,0.1)',
+                              border: `1px solid ${s > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(68,255,136,0.2)'}`,
+                              color: s > 0 ? '#ff9999' : '#88cc88',
+                            }}>
+                              {key.replace(/_/g, ' ')}: {s > 0 ? '+' : ''}{s}%
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Override Alerts */}
+                  {overrideAlerts.filter((a: any) => a.severity === 'critical').length > 0 && (
+                    <div style={{ padding: '16px 0', borderBottom: '1px solid #ff4444' }}>
+                      <div style={{ fontSize: '11px', color: '#ff6666', letterSpacing: '1px', marginBottom: '8px' }}>🚨 CRITICAL ALERTS</div>
+                      {overrideAlerts.filter((a: any) => a.severity === 'critical').map((a: any, i: number) => (
+                        <div key={i} style={{ color: '#ff6666', fontSize: '13px', padding: '6px 0', borderBottom: '1px solid rgba(255,68,68,0.15)' }}>
+                          <strong>{a.signal?.toUpperCase()}</strong>: {a.interpretation}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Last Update */}
+                  <div style={{ textAlign: 'center', fontSize: '11px', color: '#5a6a8a', padding: '8px 0' }}>
+                    Last update: {cpiData.latest?.timestamp ? new Date(cpiData.latest.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST' : '—'}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
 
         {/* ─── SCENARIOS TAB ─── */}
         {activeTab === 'scenarios' && (
@@ -284,7 +483,11 @@ export default function WarRoomDashboard() {
                     <div className="wr-scenario-header" onClick={() => setExpandedScenario(isExpanded ? null : i)}>
                       <div className="wr-scenario-info">
                         <div className="wr-scenario-name">{s.scenario}</div>
-                        <div className="wr-scenario-range">Nifty {s.range} · {s.ivEstimate}</div>
+                        <div className="wr-scenario-range">
+                          Nifty {s.range}
+                          {s.oilRange && <> · Oil {s.oilRange}</>}
+                          {s.inrRange && <> · INR {s.inrRange}</>}
+                        </div>
                       </div>
                       <div className="wr-scenario-prob-area">
                         {editingScenario === i ? (
@@ -317,6 +520,44 @@ export default function WarRoomDashboard() {
                     {isExpanded && (
                       <div className="wr-scenario-detail">
                         <div className="wr-scenario-driver"><strong>Driver:</strong> {s.driver}</div>
+
+                        {/* Multi-market impact grid */}
+                        <div className="wr-market-impact-grid">
+                          <div className="wr-impact-item">
+                            <span className="wr-impact-label">Nifty 50</span>
+                            <span className="wr-impact-value">{s.range}</span>
+                            <span className="wr-impact-mid">mid {s.rangeMid.toLocaleString()}</span>
+                          </div>
+                          {s.oilRange && (
+                            <div className="wr-impact-item">
+                              <span className="wr-impact-label">Brent Crude</span>
+                              <span className="wr-impact-value">{s.oilRange}</span>
+                              {s.oilMid && <span className="wr-impact-mid">mid ${s.oilMid}</span>}
+                            </div>
+                          )}
+                          {s.inrRange && (
+                            <div className="wr-impact-item">
+                              <span className="wr-impact-label">USD/INR</span>
+                              <span className="wr-impact-value">{s.inrRange}</span>
+                              {s.inrMid && <span className="wr-impact-mid">mid {s.inrMid}</span>}
+                            </div>
+                          )}
+                          <div className="wr-impact-item">
+                            <span className="wr-impact-label">India VIX</span>
+                            <span className="wr-impact-value">{s.ivEstimate}</span>
+                          </div>
+                          {s.timeHorizon && (
+                            <div className="wr-impact-item">
+                              <span className="wr-impact-label">Time Horizon</span>
+                              <span className="wr-impact-value">{s.timeHorizon}</span>
+                            </div>
+                          )}
+                        </div>
+                        {s.status && s.status !== 'active' && (
+                          <div style={{ marginTop: '8px', fontSize: '12px', color: s.status === 'emerging' ? '#44ff88' : '#ff9944', fontStyle: 'italic' }}>
+                            {s.status === 'emerging' ? '🆕 EMERGING SCENARIO — recently identified by AI refresh' : '📉 FADING — scenario becoming less relevant'}
+                          </div>
+                        )}
 
                         {/* Historical precedent — always visible when expanded */}
                         {s.analogues.map((a, ai) => (
@@ -727,6 +968,17 @@ const styles = `
   /* Scenario Detail (expanded) */
   .wr-scenario-detail { padding: 0 16px 16px; border-top: 1px solid #1c2333; }
   .wr-scenario-driver { font-size: 14px; color: #b0b8c4; margin-top: 12px; }
+  .wr-market-impact-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px; margin-top: 12px;
+  }
+  .wr-impact-item {
+    background: #0d1420; border: 1px solid #1c2333; border-radius: 6px;
+    padding: 8px 10px; text-align: center;
+  }
+  .wr-impact-label { display: block; font-size: 10px; color: #5a6a8a; letter-spacing: 0.5px; }
+  .wr-impact-value { display: block; font-size: 14px; font-weight: 700; color: #e6edf3; margin: 2px 0; }
+  .wr-impact-mid { display: block; font-size: 11px; color: #8b949e; }
   .wr-precedent {
     background: #0d1420; border: 1px solid #1c2333; border-radius: 6px;
     padding: 12px; margin-top: 10px;
@@ -882,6 +1134,15 @@ const styles = `
     width: 100%; min-height: 120px; margin-top: 8px; background: #111827;
     border: 1px solid #1c2333; border-radius: 6px; padding: 10px;
     color: #b0b8c4; font-size: 14px; font-family: inherit; line-height: 1.6; resize: vertical;
+  }
+
+  /* CPI Panel */
+  .wr-cpi-panel {
+    background: #0d1117;
+    border: 1px solid #1c2333;
+    border-radius: 10px;
+    padding: 0 20px 20px;
+    font-family: 'SF Mono', 'Fira Code', 'IBM Plex Mono', monospace;
   }
 
   /* Footer */

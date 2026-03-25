@@ -1,0 +1,75 @@
+{
+  "calibration": {
+    "diplomatic": {
+      "avg_lead_hours": 29.5,
+      "earliest_lead_hours": 56.0,
+      "latest_lead_hours": 3.0,
+      "signal_count": 2
+    },
+    "maritime": {
+      "avg_lead_hours": 24.0,
+      "earliest_lead_hours": 36.0,
+      "latest_lead_hours": 12.0,
+      "signal_count": 2
+    },
+    "economic": {
+      "avg_lead_hours": 17.0,
+      "earliest_lead_hours": 28.0,
+      "latest_lead_hours": 6.0,
+      "signal_count": 2
+    },
+    "kinetic": {
+      "avg_lead_hours": 22.0,
+      "earliest_lead_hours": 22.0,
+      "latest_lead_hours": 22.0,
+      "signal_count": 1
+    }
+  },
+  "ceasefire_announcement": "2025-06-24T18:00:00+00:00",
+  "events": [
+    {
+      "ts": "2025-06-22T10:00:00+00:00",
+      "type": "diplomatic",
+      "desc": "Oman FM Badr Al-Busaidi statement \u2014 breakthrough 'within reach'",
+      "lead": 56
+    },
+    {
+      "ts": "2025-06-23T06:00:00+00:00",
+      "type": "maritime",
+      "desc": "First non-Iranian vessel transited Hormuz after 8 days",
+      "lead": 36
+    },
+    {
+      "ts": "2025-06-23T14:00:00+00:00",
+      "type": "economic",
+      "desc": "Rial strengthened 4.2% on Tehran black market",
+      "lead": 28
+    },
+    {
+      "ts": "2025-06-23T20:00:00+00:00",
+      "type": "kinetic",
+      "desc": "Iran internet connectivity recovered to 45% (from 12% baseline)",
+      "lead": 22
+    },
+    {
+      "ts": "2025-06-24T06:00:00+00:00",
+      "type": "maritime",
+      "desc": "Hormuz vessel count reached 8/day \u2014 3 different flag states",
+      "lead": 12
+    },
+    {
+      "ts": "2025-06-24T12:00:00+00:00",
+      "type": "economic",
+      "desc": "Polymarket ceasefire probability crossed 60%",
+      "lead": 6
+    },
+    {
+      "ts": "2025-06-24T15:00:00+00:00",
+      "type": "diplomatic",
+      "desc": "Trump Truth Social post hinting at deal \u2014 TACO pattern",
+      "lead": 3
+    }
+  ],
+  "key_insight": "Diplomatic broker signal leads by ~48-56h. By Trump post, only 3h remain. Rial + Hormuz vessels are the sweet spot at 28-36h lead.",
+  "generated": "2026-03-25T04:55:50.517416+00:00"
+}

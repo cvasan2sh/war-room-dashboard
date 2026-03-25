@@ -16,11 +16,20 @@ export interface Actor {
 
 export interface NiftyScenario {
   scenario: string;
+  key: string; // short key for AI mapping (e.g. 'attrition', 'ceasefire')
   prob: number;
-  range: string;
+  range: string; // Nifty range
   rangeMid: number; // midpoint for P-weighted calc
   driver: string;
   ivEstimate: string;
+  // Multi-market impact
+  oilRange?: string; // Brent crude range e.g. "$95-105"
+  oilMid?: number; // midpoint
+  inrRange?: string; // USD/INR range e.g. "86.5-87.5"
+  inrMid?: number; // midpoint
+  timeHorizon?: string; // e.g. "1-2 weeks", "3-5 days"
+  status?: 'active' | 'emerging' | 'fading'; // scenario lifecycle
+  lastUpdated?: string; // ISO timestamp of last AI update
   analogues: HistoricalAnalogue[];
 }
 
