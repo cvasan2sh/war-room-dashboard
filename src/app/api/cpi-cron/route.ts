@@ -18,14 +18,7 @@ import { collectFlightradar } from "@/lib/cpi/signals/flightradar";
 export const maxDuration = 60; // seconds — Vercel Pro allows up to 300
 export const dynamic = "force-dynamic";
 
-async function runCycle(): Promise<{
-  cpi: number | null;
-  zone: string;
-  confidence: number;
-  signals: Record<string, SignalResult>;
-  scenario_shifts: Record<string, number>;
-  override_alerts: { signal: string; severity: string; interpretation: string }[];
-}> {
+async function runCycle() {
   const now = new Date();
   console.log(
     `\n[${now.toISOString()}] CPI Cron: Collecting signals...`
@@ -160,12 +153,9 @@ async function runCycle(): Promise<{
   }
 
   return {
-    cpi,
-    zone,
-    confidence: conf,
+    cpiResult,
     signals,
-    scenario_shifts: cpiResult.scenario_shifts,
-    override_alerts: cpiResult.override_alerts,
+    latest,
   };
 }
 
@@ -181,11 +171,12 @@ export async function GET(request: Request) {
 
   try {
     const result = await runCycle();
+    // Return full data matching the shape the frontend expects from /api/cpi-data
     return NextResponse.json({
       ok: true,
-      cpi: result.cpi,
-      zone: result.zone,
-      confidence: result.confidence,
+      latest: result.latest,
+      hasData: true,
+      history: [],
       timestamp: new Date().toISOString(),
     });
   } catch (e) {

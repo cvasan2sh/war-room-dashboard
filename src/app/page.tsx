@@ -104,16 +104,29 @@ export default function WarRoomDashboard() {
     return () => clearInterval(iv);
   }, []);
 
-  // Poll CPI data from Python backend
+  // Load CPI data — try localStorage cache first, then fetch fresh from cron
   useEffect(() => {
+    // Load cached data immediately so the UI isn't empty
+    try {
+      const cached = localStorage.getItem('war-room-cpi');
+      if (cached) setCpiData(JSON.parse(cached));
+    } catch {}
+
+    // Fetch fresh data from cron endpoint (runs a full signal collection cycle)
     const fetchCpi = async () => {
       try {
-        const res = await fetch('/api/cpi-data');
-        if (res.ok) { const d = await res.json(); setCpiData(d); }
+        const res = await fetch('/api/cpi-cron', { method: 'POST' });
+        if (res.ok) {
+          const d = await res.json();
+          if (d.ok && d.hasData) {
+            setCpiData(d);
+            try { localStorage.setItem('war-room-cpi', JSON.stringify(d)); } catch {}
+          }
+        }
       } catch {}
     };
     fetchCpi();
-    const iv = setInterval(fetchCpi, 30000); // every 30s
+    const iv = setInterval(fetchCpi, 15 * 60 * 1000); // every 15 min
     return () => clearInterval(iv);
   }, []);
 
@@ -286,10 +299,11 @@ export default function WarRoomDashboard() {
                     try {
                       const r = await fetch('/api/cpi-cron', { method: 'POST' });
                       if (r.ok) {
-                        setTimeout(async () => {
-                          const res = await fetch('/api/cpi-data');
-                          if (res.ok) { const d = await res.json(); setCpiData(d); }
-                        }, 2000);
+                        const d = await r.json();
+                        if (d.ok && d.hasData) {
+                          setCpiData(d);
+                          try { localStorage.setItem('war-room-cpi', JSON.stringify(d)); } catch {}
+                        }
                       }
                     } catch {}
                   }}
