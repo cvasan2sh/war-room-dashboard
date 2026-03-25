@@ -1,12 +1,42 @@
 // store.ts — State persistence layer
-// In-memory store for serverless. State persists within a single
-// invocation and across warm starts, but resets on cold start.
-// For Hobby plan this is fine — KV can be added later on Pro.
+// Uses /tmp filesystem on Vercel serverless (persists across warm invocations).
+// Falls back to in-memory Map if /tmp is unavailable.
 
+import { readFile, writeFile, mkdir } from "fs/promises";
+import { existsSync } from "fs";
 import type { SignalState, HistoryEntry, LatestData } from "./types";
 
-// Global in-memory store — survives across warm invocations
-const memStore = new Map<string, unknown>();
+const TMP_DIR = "/tmp/cpi";
+const STATE_FILE = `${TMP_DIR}/signal_state.json`;
+const HISTORY_FILE = `${TMP_DIR}/history.json`;
+const LATEST_FILE = `${TMP_DIR}/latest.json`;
+
+async function ensureDir() {
+  if (!existsSync(TMP_DIR)) {
+    await mkdir(TMP_DIR, { recursive: true });
+  }
+}
+
+async function readJSON<T>(path: string, fallback: T): Promise<T> {
+  try {
+    await ensureDir();
+    const raw = await readFile(path, "utf-8");
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+async function writeJSON(path: string, data: unknown): Promise<void> {
+  try {
+    await ensureDir();
+    await writeFile(path, JSON.stringify(data), "utf-8");
+  } catch (e) {
+    console.log(`[STORE] Failed to write ${path}: ${e}`);
+  }
+}
+
+// ── Default state ────────────────────────────────────────────
 
 const DEFAULT_STATE: SignalState = {
   bonbast_rates: [],
@@ -18,36 +48,30 @@ const DEFAULT_STATE: SignalState = {
 // ── Signal State ─────────────────────────────────────────────
 
 export async function getSignalState(): Promise<SignalState> {
-  const raw = memStore.get("cpi:signal_state");
-  if (!raw || typeof raw !== "object") return { ...DEFAULT_STATE };
-  return raw as SignalState;
+  return readJSON(STATE_FILE, { ...DEFAULT_STATE });
 }
 
 export async function setSignalState(state: SignalState): Promise<void> {
-  memStore.set("cpi:signal_state", state);
+  await writeJSON(STATE_FILE, state);
 }
 
 // ── History ──────────────────────────────────────────────────
 
 export async function getHistory(): Promise<HistoryEntry[]> {
-  const raw = memStore.get("cpi:history");
-  if (!Array.isArray(raw)) return [];
-  return raw as HistoryEntry[];
+  return readJSON(HISTORY_FILE, []);
 }
 
 export async function setHistory(history: HistoryEntry[]): Promise<void> {
   const trimmed = history.slice(-672);
-  memStore.set("cpi:history", trimmed);
+  await writeJSON(HISTORY_FILE, trimmed);
 }
 
 // ── Latest ───────────────────────────────────────────────────
 
 export async function getLatest(): Promise<LatestData | null> {
-  const raw = memStore.get("cpi:latest");
-  if (!raw || typeof raw !== "object") return null;
-  return raw as LatestData;
+  return readJSON(LATEST_FILE, null);
 }
 
 export async function setLatest(latest: LatestData): Promise<void> {
-  memStore.set("cpi:latest", latest);
+  await writeJSON(LATEST_FILE, latest);
 }

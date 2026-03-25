@@ -279,9 +279,25 @@ export default function WarRoomDashboard() {
           <div className="wr-cpi-panel">
             {!cpiData?.hasData ? (
               <div style={{ textAlign: 'center', padding: '40px 20px', color: '#8b949e' }}>
-                <p style={{ fontSize: '16px', marginBottom: '12px' }}>CPI backend not running yet.</p>
-                <p style={{ fontSize: '13px' }}>Run <code style={{ background: '#1c2333', padding: '2px 8px', borderRadius: '4px' }}>cd cpi &amp;&amp; python scheduler.py</code> to start collecting signals.</p>
-                <p style={{ fontSize: '13px', marginTop: '8px' }}>Once running, CPI data will appear here automatically.</p>
+                <p style={{ fontSize: '16px', marginBottom: '12px' }}>Waiting for first CPI cycle...</p>
+                <p style={{ fontSize: '13px' }}>The scheduler runs every 15 minutes via cron. Data will appear automatically.</p>
+                <button
+                  onClick={async () => {
+                    try {
+                      const r = await fetch('/api/cpi-cron', { method: 'POST' });
+                      if (r.ok) {
+                        setTimeout(async () => {
+                          const res = await fetch('/api/cpi-data');
+                          if (res.ok) { const d = await res.json(); setCpiData(d); }
+                        }, 2000);
+                      }
+                    } catch {}
+                  }}
+                  style={{ marginTop: '16px', padding: '10px 24px', background: '#238636', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: 600 }}
+                >
+                  Run CPI Now
+                </button>
+                <p style={{ fontSize: '11px', marginTop: '8px', color: '#5a6a8a' }}>Takes ~60s (Hormuz WebSocket needs 45s to collect vessel data)</p>
               </div>
             ) : (() => {
               const cpi = cpiData.latest?.cpi_result || {};
