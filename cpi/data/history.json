@@ -442,5 +442,658 @@
       "attrition": 0,
       "hormuz_closure": 5
     }
+  },
+  {
+    "timestamp": "2026-03-25T08:55:36.892304+00:00",
+    "cpi": 48,
+    "zone": "STATUS_QUO",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 46,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "infra_hit": 8,
+      "hormuz_closure": 10,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T09:11:44.658738+00:00",
+    "cpi": 54,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 58,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "infra_hit": 8,
+      "hormuz_closure": 10,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T09:27:49.821369+00:00",
+    "cpi": 65,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 78,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "ceasefire": 5,
+      "attrition": 0,
+      "hormuz_closure": 5
+    }
+  },
+  {
+    "timestamp": "2026-03-25T09:43:56.786252+00:00",
+    "cpi": 52,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 53,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "infra_hit": 8,
+      "hormuz_closure": 10,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T10:00:01.979366+00:00",
+    "cpi": 65,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 63,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 68,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 5,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T10:16:09.151177+00:00",
+    "cpi": 75,
+    "zone": "CEASEFIRE_LIKELY",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 83,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 66,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "ceasefire": 5,
+      "attrition": 0,
+      "hormuz_closure": 5
+    }
+  },
+  {
+    "timestamp": "2026-03-25T10:32:12.333290+00:00",
+    "cpi": 72,
+    "zone": "CEASEFIRE_LIKELY",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 78,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 65,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "ceasefire": 5,
+      "attrition": 0,
+      "hormuz_closure": 5
+    }
+  },
+  {
+    "timestamp": "2026-03-25T10:48:21.723523+00:00",
+    "cpi": 36,
+    "zone": "STATUS_QUO",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 12,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 63,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 22,
+      "infra_hit": 13,
+      "attrition": 6
+    }
+  },
+  {
+    "timestamp": "2026-03-25T11:04:32.060110+00:00",
+    "cpi": 65,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 68,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 62,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 5,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T11:20:36.040321+00:00",
+    "cpi": 66,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 71,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 61,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "ceasefire": 5,
+      "attrition": 0,
+      "hormuz_closure": 5
+    }
+  },
+  {
+    "timestamp": "2026-03-25T11:36:46.170869+00:00",
+    "cpi": 49,
+    "zone": "STATUS_QUO",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 39,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 61,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "infra_hit": 8,
+      "hormuz_closure": 10,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T11:52:52.664148+00:00",
+    "cpi": 64,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 68,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 60,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 5,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T12:09:00.075218+00:00",
+    "cpi": 70,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 80,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 59,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "ceasefire": 5,
+      "attrition": 0,
+      "hormuz_closure": 5
+    }
+  },
+  {
+    "timestamp": "2026-03-25T12:25:04.950277+00:00",
+    "cpi": 56,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 53,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 59,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "infra_hit": 8,
+      "hormuz_closure": 10,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T12:41:41.117008+00:00",
+    "cpi": 61,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 63,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 58,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 5,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T12:58:15.782324+00:00",
+    "cpi": 65,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 71,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 58,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "ceasefire": 5,
+      "attrition": 0,
+      "hormuz_closure": 5
+    }
+  },
+  {
+    "timestamp": "2026-03-25T13:14:49.704743+00:00",
+    "cpi": 60,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 63,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 57,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 5,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T13:31:26.044046+00:00",
+    "cpi": 38,
+    "zone": "STATUS_QUO",
+    "confidence": 0.47,
+    "signals": {
+      "hormuz": {
+        "score": 5,
+        "confidence": 0.5
+      },
+      "bonbast": {
+        "score": 57,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "infra_hit": 8,
+      "hormuz_closure": 10,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T13:48:04.683127+00:00",
+    "cpi": 68,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.35,
+    "signals": {
+      "hormuz": {
+        "score": 68,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 5,
+      "attrition": 3
+    }
+  },
+  {
+    "timestamp": "2026-03-25T14:04:40.203621+00:00",
+    "cpi": 63,
+    "zone": "DIPLOMATIC",
+    "confidence": 0.65,
+    "signals": {
+      "hormuz": {
+        "score": 68,
+        "confidence": 1.0
+      },
+      "bonbast": {
+        "score": 57,
+        "confidence": 1.0
+      },
+      "polymarket": {
+        "score": 50,
+        "confidence": 0.0
+      },
+      "flightradar": {
+        "score": 50,
+        "confidence": 1.0
+      },
+      "nasa_firms": {
+        "score": 50,
+        "confidence": 1.0
+      }
+    },
+    "scenario_shifts": {
+      "hormuz_closure": 5,
+      "attrition": 3
+    }
   }
 ]

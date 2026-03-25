@@ -1,6 +1,6 @@
 {
   "cpi_result": {
-    "cpi": 66,
+    "cpi": 63,
     "zone": {
       "name": "DIPLOMATIC",
       "color": "yellow",
@@ -9,7 +9,7 @@
     "total_confidence": 0.65,
     "signal_details": {
       "hormuz": {
-        "score": 80,
+        "score": 68,
         "confidence": 1.0,
         "effective_weight": 0.35
       },
@@ -19,16 +19,15 @@
         "effective_weight": 0.0
       },
       "bonbast": {
-        "score": 50,
+        "score": 57,
         "confidence": 1.0,
         "effective_weight": 0.3
       }
     },
     "alerts": [],
     "scenario_shifts": {
-      "ceasefire": 5,
-      "attrition": 0,
-      "hormuz_closure": 5
+      "hormuz_closure": 5,
+      "attrition": 3
     },
     "override_alerts": [
       {
@@ -42,25 +41,25 @@
         "severity": "info"
       }
     ],
-    "timestamp": "2026-03-25T08:39:25.840682+00:00"
+    "timestamp": "2026-03-25T14:04:38.580378+00:00"
   },
   "signals": {
     "hormuz": {
-      "score": 80,
+      "score": 68,
       "confidence": 1.0,
-      "interpretation": "13 vessels transiting \u2014 normal commercial flow",
+      "interpretation": "9 vessels transiting \u2014 reduced traffic",
       "alert": false,
       "type": "weighted",
-      "count": 13
+      "count": 9
     },
     "bonbast": {
-      "score": 50,
+      "score": 57,
       "confidence": 1.0,
-      "interpretation": "Rial stable (+0.0%) at 159,950 \u2014 no significant move",
+      "interpretation": "Rial strengthening (+1.0%) at 154,950 \u2014 no significant move",
       "alert": false,
       "type": "weighted",
-      "rate": 159950,
-      "trend_pct": 0.0
+      "rate": 154950,
+      "trend_pct": 0.0102
     },
     "polymarket": {
       "score": 50,
@@ -91,5 +90,5 @@
       }
     }
   },
-  "timestamp": "2026-03-25T08:39:27.112342+00:00"
+  "timestamp": "2026-03-25T14:04:40.214016+00:00"
 }
